@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, SafeAreaView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, SafeAreaView, ViewStyle, TextStyle } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { customerService, transactionService } from '@/lib/supabase';
@@ -21,6 +21,7 @@ export default function CustomerInfoScreen() {
   const [customerFound, setCustomerFound] = useState(false);
   const [language, setLanguage] = useState<'ar' | 'he' | 'en'>('ar');
   const [selectedService, setSelectedService] = useState<any>(null);
+  const [serviceDetails, setServiceDetails] = useState<string>('');
   const [fromCalculator, setFromCalculator] = useState(false);
   const [calculatorData, setCalculatorData] = useState<any>(null);
   const router = useRouter();
@@ -31,6 +32,13 @@ export default function CustomerInfoScreen() {
       loadInitialData();
     }, [])
   );
+
+  useEffect(() => {
+    // تحديث تفاصيل الخدمة عند تغيير اللغة
+    if (selectedService) {
+      updateServiceDetails(selectedService);
+    }
+  }, [language]);
 
   const loadLanguage = async () => {
     try {
@@ -81,9 +89,13 @@ export default function CustomerInfoScreen() {
           service_number: 8,
           service_name: 'صرافة أموال',
           service_name_he: 'החלפת כספים',
-          service_name_en: 'Money Exchange'
+          service_name_en: 'Money Exchange',
+          details_ar: 'خدمة تبديل العملات الأجنبية والمحلية',
+          details_he: 'שירות החלפת מטבעות זרים ומקומיים',
+          details_en: 'Foreign and local currency exchange service'
         };
         setSelectedService(exchangeService);
+        updateServiceDetails(exchangeService);
         console.log('✅ تم تعيين الخدمة: صرافة أموال');
       } else {
         // تحميل الخدمة المختارة من صفحة الخدمات
@@ -106,18 +118,10 @@ export default function CustomerInfoScreen() {
         
         if (serviceNumber && serviceName) {
           const serviceNum = parseInt(serviceNumber);
-          console.log('🔄 إنشاء كائن الخدمة للرقم:', serviceNum);
-          
-          const service = {
-            id: serviceNum.toString(),
-            service_number: serviceNum,
-            service_name: serviceName,
-            service_name_he: serviceNameHe || '',
-            service_name_en: serviceNameEn || ''
-          };
-          setSelectedService(service);
-          console.log('✅ تم تحميل الخدمة المختارة:', service.service_name);
-          console.log('📊 تفاصيل الخدمة الكاملة:', service);
+          console.log('🔄 جلب تفاصيل الخدمة رقم:', serviceNum);
+
+          // جلب تفاصيل الخدمة من قاعدة البيانات
+          await fetchServiceDetails(serviceNum, serviceName, serviceNameHe, serviceNameEn);
         } else {
           console.log('⚠️ لم يتم العثور على خدمة محددة');
         }
@@ -125,6 +129,61 @@ export default function CustomerInfoScreen() {
     } catch (error) {
       console.error('❌ خطأ في تحميل البيانات:', error);
     }
+  };
+
+  const fetchServiceDetails = async (serviceNum: number, serviceName: string, serviceNameHe: string | null, serviceNameEn: string | null) => {
+    try {
+      // محاولة جلب تفاصيل الخدمة من قاعدة البيانات
+      const { supabase } = await import('@/lib/supabase');
+      const { data, error } = await supabase
+        .from('services')
+        .select('details_ar, details_he, details_en')
+        .eq('service_number', serviceNum)
+        .maybeSingle();
+
+      if (error) {
+        console.log('⚠️ خطأ في جلب تفاصيل الخدمة:', error.message);
+      }
+
+      const service = {
+        id: serviceNum.toString(),
+        service_number: serviceNum,
+        service_name: serviceName,
+        service_name_he: serviceNameHe || '',
+        service_name_en: serviceNameEn || '',
+        details_ar: data?.details_ar || '',
+        details_he: data?.details_he || '',
+        details_en: data?.details_en || ''
+      };
+
+      setSelectedService(service);
+      updateServiceDetails(service);
+      console.log('✅ تم تحميل الخدمة المختارة:', service.service_name);
+      console.log('📊 تفاصيل الخدمة الكاملة:', service);
+    } catch (error) {
+      console.error('❌ خطأ في جلب تفاصيل الخدمة:', error);
+    }
+  };
+
+  const updateServiceDetails = (service: any) => {
+    if (!service) {
+      setServiceDetails('');
+      return;
+    }
+
+    let details = '';
+    switch (language) {
+      case 'he':
+        details = service.details_he || service.details_ar || '';
+        break;
+      case 'en':
+        details = service.details_en || service.details_ar || '';
+        break;
+      default:
+        details = service.details_ar || '';
+    }
+    setServiceDetails(details);
+    console.log(`📝 تم تحديث تفاصيل الخدمة (${language}):`, details);
   };
 
   const searchCustomerByNationalId = async (nationalId: string) => {
@@ -598,13 +657,13 @@ export default function CustomerInfoScreen() {
     return language === 'en' ? 'left' : 'right';
   };
 
-  const getNationalIdInputStyle = () => {
+  const getNationalIdInputStyle = (): (TextStyle | ViewStyle)[] => {
     if (searching) {
-      return [styles.input, styles.searchingInput, { textAlign: 'center' }];
+      return [styles.input, styles.searchingInput, { textAlign: 'center' as const }];
     } else if (customerFound) {
-      return [styles.input, styles.foundInput, { textAlign: 'center' }];
+      return [styles.input, styles.foundInput, { textAlign: 'center' as const }];
     } else {
-      return [styles.input, { textAlign: 'center' }];
+      return [styles.input, { textAlign: 'center' as const }];
     }
   };
 
@@ -658,6 +717,11 @@ export default function CustomerInfoScreen() {
             <Text style={[styles.selectedServiceName, { textAlign: getTextAlign() }]}>
               {getDisplayedServiceName()}
             </Text>
+            {serviceDetails && (
+              <Text style={[styles.serviceDetails, { textAlign: getTextAlign() }]}>
+                {serviceDetails}
+              </Text>
+            )}
           </View>
 
           {/* Customer Information Form */}
@@ -851,6 +915,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#1E40AF',
     fontWeight: 'bold',
+  },
+  serviceDetails: {
+    fontSize: 14,
+    color: '#64748B',
+    marginTop: 8,
+    lineHeight: 20,
+    fontStyle: 'italic',
   },
   formContainer: {
     backgroundColor: '#FFFFFF',
