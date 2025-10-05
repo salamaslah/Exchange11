@@ -942,6 +942,8 @@ export default function PricesScreen() {
                           style={styles.amountInput}
                           value={fromAmount}
                           onChangeText={handleFromAmountChange}
+                          onFocus={resetInactivityTimer}
+                          onKeyPress={resetInactivityTimer}
                           placeholder="0.00"
                           keyboardType="decimal-pad"
                         />
@@ -952,6 +954,8 @@ export default function PricesScreen() {
                           style={styles.amountInput}
                           value={toAmount}
                           onChangeText={handleToAmountChange}
+                          onFocus={resetInactivityTimer}
+                          onKeyPress={resetInactivityTimer}
                           placeholder="0.00"
                           keyboardType="decimal-pad"
                         />
