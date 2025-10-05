@@ -720,8 +720,6 @@ export default function CustomerInfoScreen() {
               image1_type: image1 ? 'image/jpeg' : '',
               image2_data: image2 || '',
               image2_type: image2 ? 'image/jpeg' : ''
-              image2_data: image2 || '',
-              image2_type: image2 ? 'image/jpeg' : ''
             });
             console.log('✅ تم تحديث بيانات الزبون في قاعدة البيانات');
           } else {
@@ -733,8 +731,6 @@ export default function CustomerInfoScreen() {
               birth_date: customerInfo.birth_date,
               image1_data: image1 || '',
               image1_type: image1 ? 'image/jpeg' : '',
-              image2_data: image2 || '',
-              image2_type: image2 ? 'image/jpeg' : ''
               image2_data: image2 || '',
               image2_type: image2 ? 'image/jpeg' : ''
             });
