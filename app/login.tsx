@@ -95,8 +95,8 @@ export default function LoginScreen() {
               />
             </View>
 
-            <TouchableOpacity 
-              style={[styles.loginButton, loading && styles.loginButtonDisabled]} 
+            <TouchableOpacity
+              style={[styles.loginButton, loading && styles.loginButtonDisabled]}
               onPress={handleLogin}
               disabled={loading}
             >
@@ -104,12 +104,6 @@ export default function LoginScreen() {
                 {loading ? 'جاري تسجيل الدخول...' : '🔐 تسجيل الدخول'}
               </Text>
             </TouchableOpacity>
-          </View>
-
-          <View style={styles.infoContainer}>
-            <Text style={styles.infoTitle}>معلومات تسجيل الدخول الافتراضية:</Text>
-            <Text style={styles.infoText}>اسم المستخدم: admin</Text>
-            <Text style={styles.infoText}>كلمة المرور: 123456</Text>
           </View>
         </View>
       </ScrollView>
@@ -245,25 +239,5 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: 'bold',
-  },
-  infoContainer: {
-    backgroundColor: '#EFF6FF',
-    padding: 20,
-    borderRadius: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: '#3B82F6',
-    width: '100%',
-  },
-  infoTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1E40AF',
-    marginBottom: 10,
-  },
-  infoText: {
-    fontSize: 14,
-    color: '#1E40AF',
-    marginBottom: 5,
-    fontFamily: 'monospace',
   },
 });
