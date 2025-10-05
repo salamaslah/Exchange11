@@ -25,14 +25,10 @@ export default function CustomerInfoScreen() {
   const [calculatorData, setCalculatorData] = useState<any>(null);
   const router = useRouter();
 
-  useEffect(() => {
-    loadInitialData();
-  }, []);
-
   useFocusEffect(
     React.useCallback(() => {
-      console.log('🔄 تم تفعيل صفحة معلومات الزبائن - فحص البيانات...');
-      loadLanguage();
+      console.log('🔄 تم تفعيل صفحة معلومات الزبائن - إعادة تحميل البيانات...');
+      loadInitialData();
     }, [])
   );
 
@@ -98,9 +94,15 @@ export default function CustomerInfoScreen() {
         
         console.log('🔍 فحص الخدمة المختارة من AsyncStorage:');
         console.log('- selectedServiceNumber:', serviceNumber);
-        console.log('- selectedServiceName:', serviceName);
-        console.log('- selectedServiceNameHe:', serviceNameHe);
-        console.log('- selectedServiceNameEn:', serviceNameEn);
+        console.log('- selectedServiceName (عربي):', serviceName);
+        console.log('- selectedServiceNameHe (עברית):', serviceNameHe);
+        console.log('- selectedServiceNameEn (English):', serviceNameEn);
+
+        // طباعة تفصيلية لتشخيص المشكلة
+        if (serviceName === 'إنشاء فيزا' && serviceNumber !== '1') {
+          console.error('⚠️ خطأ: الخدمة المحفوظة لها اسم "إنشاء فيزا" لكن رقمها ليس 1!');
+          console.error('⚠️ رقم الخدمة الفعلي:', serviceNumber);
+        }
         
         if (serviceNumber && serviceName) {
           const serviceNum = parseInt(serviceNumber);
