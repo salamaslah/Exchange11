@@ -569,8 +569,27 @@ export default function CustomerInfoScreen() {
     }
   };
 
-  const handleBack = () => {
-    router.back();
+  const handleBack = async () => {
+    try {
+      // مسح جميع البيانات المحفوظة عند العودة
+      await AsyncStorage.removeItem('selectedServiceNumber');
+      await AsyncStorage.removeItem('selectedServiceName');
+      await AsyncStorage.removeItem('selectedServiceNameHe');
+      await AsyncStorage.removeItem('selectedServiceNameEn');
+      await AsyncStorage.removeItem('currentCustomerId');
+      await AsyncStorage.removeItem('currentCustomerName');
+      await AsyncStorage.removeItem('currentCustomerPhone');
+      await AsyncStorage.removeItem('fromCalculator');
+      await AsyncStorage.removeItem('calculatorData');
+
+      console.log('🧹 تم مسح جميع البيانات المحفوظة');
+
+      // العودة لصفحة الخدمات
+      router.replace('/(tabs)/services');
+    } catch (error) {
+      console.error('❌ خطأ في مسح البيانات:', error);
+      router.back();
+    }
   };
 
   const getTextAlign = () => {
