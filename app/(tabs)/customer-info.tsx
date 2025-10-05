@@ -1,31 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, SafeAreaView, Image } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, SafeAreaView } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as ImagePicker from 'expo-image-picker';
 import { customerService, transactionService } from '@/lib/supabase';
 
 interface CustomerInfo {
   customer_name: string;
   national_id: string;
   phone_number: string;
-  birth_date: string;
-  image1_data?: string;
-  image1_type?: string;
-  image2_data?: string;
-  image2_type?: string;
 }
 
 export default function CustomerInfoScreen() {
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
     customer_name: '',
     national_id: '',
-    phone_number: '',
-    birth_date: '',
-    image1_data: '',
-    image1_type: '',
-    image2_data: '',
-    image2_type: ''
+    phone_number: ''
   });
   const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
@@ -34,8 +23,6 @@ export default function CustomerInfoScreen() {
   const [selectedService, setSelectedService] = useState<any>(null);
   const [fromCalculator, setFromCalculator] = useState(false);
   const [calculatorData, setCalculatorData] = useState<any>(null);
-  const [image1, setImage1] = useState<string | null>(null);
-  const [image2, setImage2] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -72,15 +59,8 @@ export default function CustomerInfoScreen() {
       setCustomerInfo({
         customer_name: '',
         national_id: '',
-        phone_number: '',
-        birth_date: '',
-        image1_data: '',
-        image1_type: '',
-        image2_data: '',
-        image2_type: ''
+        phone_number: ''
       });
-      setImage1(null);
-      setImage2(null);
       setCustomerFound(false);
       setSelectedService(null);
       setFromCalculator(false);
@@ -159,26 +139,13 @@ export default function CustomerInfoScreen() {
       
       if (customer) {
         console.log(`✅ تم العثور على الزبون: ${customer.customer_name}`);
-        
+
         // ملء البيانات تلقائياً
         setCustomerInfo({
           customer_name: customer.customer_name,
           national_id: customer.national_id,
-          phone_number: customer.phone_number || '',
-          birth_date: customer.birth_date,
-          image1_data: customer.image1_data || customerInfo.image1_data || '',
-          image1_type: customer.image1_type || customerInfo.image1_type || '',
-          image2_data: customer.image2_data || customerInfo.image2_data || '',
-          image2_type: customer.image2_type || customerInfo.image2_type || ''
+          phone_number: customer.phone_number || ''
         });
-
-        // تحميل الصور إذا كانت متوفرة
-        if (customer.image1_data && customer.image1_data.trim()) {
-          setImage1(customer.image1_data);
-        }
-        if (customer.image2_data && customer.image2_data.trim()) {
-          setImage2(customer.image2_data);
-        }
 
         setCustomerFound(true);
         
@@ -200,15 +167,8 @@ export default function CustomerInfoScreen() {
         setCustomerInfo(prev => ({
           customer_name: '',
           national_id: prev.national_id,
-          phone_number: '',
-          birth_date: '',
-          image1_data: '',
-          image1_type: '',
-          image2_data: '',
-          image2_type: ''
+          phone_number: ''
         }));
-        setImage1(null);
-        setImage2(null);
       }
     } catch (error) {
       console.error('❌ خطأ في البحث عن الزبون:', error);
@@ -277,207 +237,38 @@ export default function CustomerInfoScreen() {
     }
   };
 
-  const getRequiredFields = () => {
-    if (!selectedService) return { basic: true, phone: false, images: false };
-
-    const serviceNumber = selectedService.service_number;
-
-    switch (serviceNumber) {
-      case 8: // صرافة أموال (من الآلة الحاسبة)
-        return { basic: true, phone: false, images: false };
-      
-      case 1: // إنشاء فيزا
-        return { basic: true, phone: true, images: true };
-      
-      case 7: // إيداع في الفيزا
-        return { basic: true, phone: false, images: false };
-      
-      case 2: // تحويل للخارج
-      case 4: // صرافة شيكات
-      case 5: // تحويل لحساب بنك
-      case 6: // سحب من الفيزا
-        return { basic: true, phone: true, images: true };
-      
-      case 3: // سحب حوالة
-        return { basic: true, phone: true, images: true };
-      
-      default:
-        return { basic: true, phone: false, images: false };
-    }
-  };
-
-  const getImage1Label = () => {
-    switch (language) {
-      case 'he': return 'תמונת תעודת זהות';
-      case 'en': return 'ID Photo';
-      default: return 'صورة الهوية';
-    }
-  };
-
-  const getImage2Label = () => {
-    if (!selectedService) return 'صورة إضافية';
-    
-    const serviceNumber = selectedService.service_number;
-    
-    switch (serviceNumber) {
-      case 1: // إنشاء فيزا
-        switch (language) {
-          case 'he': return 'תמונת רישיון נהיגה';
-          case 'en': return 'Driver License Photo';
-          default: return 'صورة رخصة القيادة';
-        }
-      
-      case 4: // صرافة شيكات
-      case 5: // تحويل لحساب بنك
-      case 6: // سحب من الفيزا
-        switch (language) {
-          case 'he': return 'תמונת רישיון נהיגה';
-          case 'en': return 'Driver License Photo';
-          default: return 'صورة رخصة القيادة';
-        }
-      
-      case 2: // تحويل للخارج
-        switch (language) {
-          case 'he': return 'תמונת דרכון הנמען';
-          case 'en': return 'Recipient Passport Photo';
-          default: return 'صورة جواز سفر المرسل إليه';
-        }
-      
-      case 3: // سحب حوالة
-        switch (language) {
-          case 'he': return 'תמונת רישיון נהיגה';
-          case 'en': return 'Driver License Photo';
-          default: return 'صورة رخصة القيادة';
-        }
-      
-      default:
-        switch (language) {
-          case 'he': return 'תמונה נוספת';
-          case 'en': return 'Additional Photo';
-          default: return 'صورة إضافية';
-        }
-    }
-  };
-
-  const pickImage = async (imageNumber: 1 | 2) => {
-    try {
-      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
-      if (permissionResult.granted === false) {
-        Alert.alert(
-          language === 'ar' ? 'إذن مطلوب' : language === 'he' ? 'נדרש אישור' : 'Permission Required',
-          language === 'ar' ? 'نحتاج إذن للوصول للصور' : language === 'he' ? 'אנחנו צריכים אישור לגישה לתמונות' : 'We need permission to access photos'
-        );
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets[0]) {
-        const imageUri = result.assets[0].uri;
-        
-        if (imageNumber === 1) {
-          setImage1(imageUri);
-          setCustomerInfo(prev => ({ ...prev, image1_data: imageUri, image1_type: 'image/jpeg' }));
-          console.log('✅ تم اختيار الصورة الأولى:', imageUri);
-        } else {
-          setImage2(imageUri);
-          setCustomerInfo(prev => ({ ...prev, image2_data: imageUri, image2_type: 'image/jpeg' }));
-          console.log('✅ تم اختيار الصورة الثانية:', imageUri);
-        }
-      }
-    } catch (error) {
-      console.error('خطأ في اختيار الصورة:', error);
-      Alert.alert(
-        language === 'ar' ? 'خطأ' : language === 'he' ? 'שגיאה' : 'Error',
-        language === 'ar' ? 'حدث خطأ في اختيار الصورة' : language === 'he' ? 'אירעה שגיאה בבחירת התמונה' : 'Error occurred while selecting image'
-      );
-    }
-  };
-
-  const removeImage = (imageNumber: 1 | 2) => {
-    if (imageNumber === 1) {
-      setImage1(null);
-      setCustomerInfo(prev => ({ ...prev, image1_data: '', image1_type: '' }));
-      console.log('🗑️ تم حذف الصورة الأولى');
-    } else {
-      setImage2(null);
-      setCustomerInfo(prev => ({ ...prev, image2_data: '', image2_type: '' }));
-      console.log('🗑️ تم حذف الصورة الثانية');
-    }
-  };
-
   const validateCustomerInfo = (): boolean => {
-    const requiredFields = getRequiredFields();
-    
-    // التحقق من الحقول الأساسية
-    if (!customerInfo.customer_name.trim()) {
-      Alert.alert(
-        language === 'ar' ? 'خطأ' : language === 'he' ? 'שגיאה' : 'Error',
-        language === 'ar' ? 'يرجى إدخال اسم الزبون' : 
-        language === 'he' ? 'אנא הכנס שם הלקוח' : 
-        'Please enter customer name'
-      );
-      return false;
-    }
-
+    // التحقق من رقم الهوية
     if (!customerInfo.national_id.trim() || customerInfo.national_id.length !== 9) {
       Alert.alert(
         language === 'ar' ? 'خطأ' : language === 'he' ? 'שגיאה' : 'Error',
-        language === 'ar' ? 'يرجى إدخال رقم هوية صحيح (9 أرقام)' : 
-        language === 'he' ? 'אנא הכנס מספר זהות תקין (9 ספרות)' : 
+        language === 'ar' ? 'يرجى إدخال رقم هوية صحيح (9 أرقام)' :
+        language === 'he' ? 'אנא הכנס מספר זהות תקין (9 ספרות)' :
         'Please enter valid ID number (9 digits)'
       );
       return false;
     }
 
-    if (!customerInfo.birth_date.trim()) {
+    // التحقق من اسم الزبون
+    if (!customerInfo.customer_name.trim()) {
       Alert.alert(
         language === 'ar' ? 'خطأ' : language === 'he' ? 'שגיאה' : 'Error',
-        language === 'ar' ? 'يرجى إدخال تاريخ الميلاد' : 
-        language === 'he' ? 'אנא הכנס תאריך לידה' : 
-        'Please enter birth date'
+        language === 'ar' ? 'يرجى إدخال اسم الزبون' :
+        language === 'he' ? 'אנא הכנס שם הלקוח' :
+        'Please enter customer name'
       );
       return false;
     }
 
-    // التحقق من رقم الهاتف إذا كان مطلوباً
-    if (requiredFields.phone && !customerInfo.phone_number.trim()) {
+    // التحقق من رقم الهاتف
+    if (!customerInfo.phone_number.trim()) {
       Alert.alert(
         language === 'ar' ? 'خطأ' : language === 'he' ? 'שגיאה' : 'Error',
-        language === 'ar' ? 'يرجى إدخال رقم الهاتف' : 
-        language === 'he' ? 'אנא הכנס מספר טלפון' : 
+        language === 'ar' ? 'يرجى إدخال رقم الهاتف' :
+        language === 'he' ? 'אנא הכנס מספר טלפון' :
         'Please enter phone number'
       );
       return false;
-    }
-
-    // التحقق من الصور إذا كانت مطلوبة
-    if (requiredFields.images) {
-      if (!image1) {
-        Alert.alert(
-          language === 'ar' ? 'خطأ' : language === 'he' ? 'שגיאה' : 'Error',
-          language === 'ar' ? 'يرجى رفع صورة الهوية' : 
-          language === 'he' ? 'אנא העלה תמונת תעודת זהות' : 
-          'Please upload ID photo'
-        );
-        return false;
-      }
-
-      if (!image2) {
-        Alert.alert(
-          language === 'ar' ? 'خطأ' : language === 'he' ? 'שגיאה' : 'Error',
-          language === 'ar' ? `يرجى رفع ${getImage2Label()}` : 
-          language === 'he' ? `אנא העלה ${getImage2Label()}` : 
-          `Please upload ${getImage2Label()}`
-        );
-        return false;
-      }
     }
 
     return true;
@@ -628,15 +419,7 @@ export default function CustomerInfoScreen() {
       await AsyncStorage.setItem('currentCustomerId', customerInfo.national_id);
       await AsyncStorage.setItem('currentCustomerName', customerInfo.customer_name);
       await AsyncStorage.setItem('currentCustomerPhone', customerInfo.phone_number);
-      await AsyncStorage.setItem('currentCustomerBirthDate', customerInfo.birth_date);
-      
-      if (image1) {
-        await AsyncStorage.setItem('currentCustomerImage1', image1);
-      }
-      if (image2) {
-        await AsyncStorage.setItem('currentCustomerImage2', image2);
-      }
-      
+
       console.log('✅ تم حفظ بيانات الزبون في التخزين المحلي');
 
       // معالجة المعاملة حسب نوع الخدمة
@@ -644,17 +427,12 @@ export default function CustomerInfoScreen() {
         // إنشاء أو تحديث بيانات الزبون في قاعدة البيانات
         try {
           const existingCustomer = await customerService.getByNationalId(customerInfo.national_id);
-          
+
           if (existingCustomer) {
             // تحديث بيانات الزبون الموجود
             await customerService.update(existingCustomer.id, {
               customer_name: customerInfo.customer_name,
-              phone_number: customerInfo.phone_number,
-              birth_date: customerInfo.birth_date,
-              image1_data: image1 || '',
-              image1_type: image1 ? 'image/jpeg' : '',
-              image2_data: image2 || '',
-              image2_type: image2 ? 'image/jpeg' : ''
+              phone_number: customerInfo.phone_number
             });
             console.log('✅ تم تحديث بيانات الزبون في قاعدة البيانات');
           } else {
@@ -662,12 +440,7 @@ export default function CustomerInfoScreen() {
             await customerService.create({
               customer_name: customerInfo.customer_name,
               national_id: customerInfo.national_id,
-              phone_number: customerInfo.phone_number,
-              birth_date: customerInfo.birth_date,
-              image1_data: image1 || '',
-              image1_type: image1 ? 'image/jpeg' : '',
-              image2_data: image2 || '',
-              image2_type: image2 ? 'image/jpeg' : ''
+              phone_number: customerInfo.phone_number
             });
             console.log('✅ تم إنشاء زبون جديد في قاعدة البيانات');
           }
@@ -714,12 +487,7 @@ export default function CustomerInfoScreen() {
             // تحديث بيانات الزبون الموجود
             await customerService.update(existingCustomer.id, {
               customer_name: customerInfo.customer_name,
-              phone_number: customerInfo.phone_number,
-              birth_date: customerInfo.birth_date,
-              image1_data: image1 || '',
-              image1_type: image1 ? 'image/jpeg' : '',
-              image2_data: image2 || '',
-              image2_type: image2 ? 'image/jpeg' : ''
+              phone_number: customerInfo.phone_number
             });
             console.log('✅ تم تحديث بيانات الزبون في قاعدة البيانات');
           } else {
@@ -727,12 +495,7 @@ export default function CustomerInfoScreen() {
             await customerService.create({
               customer_name: customerInfo.customer_name,
               national_id: customerInfo.national_id,
-              phone_number: customerInfo.phone_number,
-              birth_date: customerInfo.birth_date,
-              image1_data: image1 || '',
-              image1_type: image1 ? 'image/jpeg' : '',
-              image2_data: image2 || '',
-              image2_type: image2 ? 'image/jpeg' : ''
+              phone_number: customerInfo.phone_number
             });
             console.log('✅ تم إنشاء زبون جديد في قاعدة البيانات');
           }
@@ -740,8 +503,8 @@ export default function CustomerInfoScreen() {
           console.error('❌ خطأ في حفظ بيانات الزبون في قاعدة البيانات:', customerError);
           Alert.alert(
             language === 'ar' ? 'تحذير' : language === 'he' ? 'אזהרה' : 'Warning',
-            language === 'ar' ? 'حدث خطأ في حفظ بيانات الزبون، لكن سيتم المتابعة' : 
-            language === 'he' ? 'אירעה שגיאה בשמירת נתוני הלקוח, אך נמשיך' : 
+            language === 'ar' ? 'حدث خطأ في حفظ بيانات الزبون، لكن سيتم المتابعة' :
+            language === 'he' ? 'אירעה שגיאה בשמירת נתוני הלקוח, אך נמשיך' :
             'Error saving customer data, but will continue'
           );
         }
@@ -837,8 +600,6 @@ export default function CustomerInfoScreen() {
       return '123456789';
     }
   };
-
-  const requiredFields = getRequiredFields();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -942,182 +703,26 @@ export default function CustomerInfoScreen() {
               />
             </View>
 
-            {/* Birth Date */}
+            {/* Phone Number */}
             <View style={styles.inputGroup}>
               <Text style={[styles.inputLabel, { textAlign: getTextAlign() }]}>
-                {language === 'ar' && 'تاريخ الميلاد:'}
-                {language === 'he' && 'תאריך לידה:'}
-                {language === 'en' && 'Birth Date:'}
+                {language === 'ar' && 'رقم الهاتف:'}
+                {language === 'he' && 'מספר טלפון:'}
+                {language === 'en' && 'Phone Number:'}
               </Text>
               <TextInput
                 style={[
-                  styles.input, 
-                  customerFound && styles.foundInput,
+                  styles.input,
+                  customerFound && customerInfo.phone_number ? styles.foundInput : styles.input,
                   { textAlign: 'center' }
                 ]}
-                value={customerInfo.birth_date}
-                onChangeText={(text) => setCustomerInfo(prev => ({ ...prev, birth_date: text }))}
-                placeholder="1990-01-01"
-                editable={!customerFound}
+                value={customerInfo.phone_number}
+                onChangeText={(text) => setCustomerInfo(prev => ({ ...prev, phone_number: text }))}
+                placeholder="0501234567"
+                keyboardType="phone-pad"
+                editable={true}
               />
             </View>
-
-            {/* Phone Number (if required) */}
-            {requiredFields.phone && (
-              <View style={styles.inputGroup}>
-                <Text style={[styles.inputLabel, { textAlign: getTextAlign() }]}>
-                  {language === 'ar' && 'رقم الهاتف:'}
-                  {language === 'he' && 'מספר טלפון:'}
-                  {language === 'en' && 'Phone Number:'}
-                </Text>
-                <TextInput
-                  style={[
-                    styles.input,
-                    customerFound && customerInfo.phone_number ? styles.foundInput : styles.input,
-                    { textAlign: 'center' }
-                  ]}
-                  value={customerInfo.phone_number}
-                  onChangeText={(text) => setCustomerInfo(prev => ({ ...prev, phone_number: text }))}
-                  placeholder="0501234567"
-                  keyboardType="phone-pad"
-                  editable={true}
-                />
-              </View>
-            )}
-
-            {/* Image 1 (if required) */}
-            {requiredFields.images && (
-              <View style={styles.inputGroup}>
-                <Text style={[styles.inputLabel, { textAlign: getTextAlign() }]}>
-                  {getImage1Label()}:
-                </Text>
-                
-                {image1 ? (
-                  <View style={styles.imageContainer}>
-                    <Image source={{ uri: image1 }} style={styles.uploadedImage} />
-                    {!customerFound && (
-                      <View style={styles.imageActions}>
-                        <TouchableOpacity 
-                          style={styles.changeImageButton}
-                          onPress={() => pickImage(1)}
-                        >
-                          <Text style={styles.changeImageButtonText}>
-                            {language === 'ar' && 'تغيير'}
-                            {language === 'he' && 'שנה'}
-                            {language === 'en' && 'Change'}
-                          </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity 
-                          style={styles.removeImageButton}
-                          onPress={() => removeImage(1)}
-                        >
-                          <Text style={styles.removeImageButtonText}>
-                            {language === 'ar' && 'حذف'}
-                            {language === 'he' && 'מחק'}
-                            {language === 'en' && 'Remove'}
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    )}
-                    {customerFound && (
-                      <Text style={[styles.imageLoadedText, { textAlign: getTextAlign() }]}>
-                        {language === 'ar' && '✅ تم تحميل الصورة من قاعدة البيانات'}
-                        {language === 'he' && '✅ התמונה נטענה ממסד הנתונים'}
-                        {language === 'en' && '✅ Image loaded from database'}
-                      </Text>
-                    )}
-                  </View>
-                ) : (
-                  <TouchableOpacity 
-                    style={styles.uploadButton}
-                    onPress={() => pickImage(1)}
-                  >
-                    <Text style={styles.uploadButtonIcon}>📷</Text>
-                    <Text style={[styles.uploadButtonText, { textAlign: getTextAlign() }]}>
-                      {language === 'ar' && `اختيار ${getImage1Label()}`}
-                      {language === 'he' && `בחר ${getImage1Label()}`}
-                      {language === 'en' && `Select ${getImage1Label()}`}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-                
-                {/* رسالة للبيانات المفقودة */}
-                {customerFound && !image1 && (
-                  <Text style={[styles.missingDataText, { textAlign: getTextAlign() }]}>
-                    {language === 'ar' && '⚠️ الصورة غير موجودة - يمكنك إضافتها'}
-                    {language === 'he' && '⚠️ התמונה חסרה - ניתן להוסיף'}
-                    {language === 'en' && '⚠️ Image missing - you can add it'}
-                  </Text>
-                )}
-              </View>
-            )}
-
-            {/* Image 2 (if required) */}
-            {requiredFields.images && (
-              <View style={styles.inputGroup}>
-                <Text style={[styles.inputLabel, { textAlign: getTextAlign() }]}>
-                  {getImage2Label()}:
-                </Text>
-                
-                {image2 ? (
-                  <View style={styles.imageContainer}>
-                    <Image source={{ uri: image2 }} style={styles.uploadedImage} />
-                    {!customerFound && (
-                      <View style={styles.imageActions}>
-                        <TouchableOpacity 
-                          style={styles.changeImageButton}
-                          onPress={() => pickImage(2)}
-                        >
-                          <Text style={styles.changeImageButtonText}>
-                            {language === 'ar' && 'تغيير'}
-                            {language === 'he' && 'שנה'}
-                            {language === 'en' && 'Change'}
-                          </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity 
-                          style={styles.removeImageButton}
-                          onPress={() => removeImage(2)}
-                        >
-                          <Text style={styles.removeImageButtonText}>
-                            {language === 'ar' && 'حذف'}
-                            {language === 'he' && 'מחק'}
-                            {language === 'en' && 'Remove'}
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    )}
-                    {customerFound && (
-                      <Text style={[styles.imageLoadedText, { textAlign: getTextAlign() }]}>
-                        {language === 'ar' && '✅ تم تحميل الصورة من قاعدة البيانات'}
-                        {language === 'he' && '✅ התמונה נטענה ממסד הנתונים'}
-                        {language === 'en' && '✅ Image loaded from database'}
-                      </Text>
-                    )}
-                  </View>
-                ) : (
-                  <TouchableOpacity 
-                    style={styles.uploadButton}
-                    onPress={() => pickImage(2)}
-                  >
-                    <Text style={styles.uploadButtonIcon}>📄</Text>
-                    <Text style={[styles.uploadButtonText, { textAlign: getTextAlign() }]}>
-                      {language === 'ar' && `اختيار ${getImage2Label()}`}
-                      {language === 'he' && `בחר ${getImage2Label()}`}
-                      {language === 'en' && `Select ${getImage2Label()}`}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-                
-                {/* رسالة للبيانات المفقودة */}
-                {customerFound && !image2 && (
-                  <Text style={[styles.missingDataText, { textAlign: getTextAlign() }]}>
-                    {language === 'ar' && '⚠️ الصورة غير موجودة - يمكنك إضافتها'}
-                    {language === 'he' && '⚠️ התמונה חסרה - ניתן להוסיף'}
-                    {language === 'en' && '⚠️ Image missing - you can add it'}
-                  </Text>
-                )}
-              </View>
-            )}
 
             {/* Continue Button */}
             <TouchableOpacity 
@@ -1157,31 +762,10 @@ export default function CustomerInfoScreen() {
               {language === 'en' && '• Full customer name'}
             </Text>
             <Text style={[styles.infoText, { textAlign: getTextAlign() }]}>
-              {language === 'ar' && '• تاريخ الميلاد'}
-              {language === 'he' && '• תאריך לידה'}
-              {language === 'en' && '• Birth date'}
+              {language === 'ar' && '• رقم الهاتف'}
+              {language === 'he' && '• מספר טלפון'}
+              {language === 'en' && '• Phone number'}
             </Text>
-            {requiredFields.phone && (
-              <Text style={[styles.infoText, { textAlign: getTextAlign() }]}>
-                {language === 'ar' && '• رقم الهاتف'}
-                {language === 'he' && '• מספר טלפון'}
-                {language === 'en' && '• Phone number'}
-              </Text>
-            )}
-            {requiredFields.images && (
-              <>
-                <Text style={[styles.infoText, { textAlign: getTextAlign() }]}>
-                  {language === 'ar' && `• ${getImage1Label()}`}
-                  {language === 'he' && `• ${getImage1Label()}`}
-                  {language === 'en' && `• ${getImage1Label()}`}
-                </Text>
-                <Text style={[styles.infoText, { textAlign: getTextAlign() }]}>
-                  {language === 'ar' && `• ${getImage2Label()}`}
-                  {language === 'he' && `• ${getImage2Label()}`}
-                  {language === 'en' && `• ${getImage2Label()}`}
-                </Text>
-              </>
-            )}
           </View>
         </View>
       </ScrollView>
