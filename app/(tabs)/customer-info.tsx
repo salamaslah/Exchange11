@@ -614,7 +614,77 @@ export default function CustomerInfoScreen() {
         // عرض رسالة الشكر والتوجيه
         showVisaCreationMessage();
       } else {
-        await navigateToServiceScreen();
+        // معالجة جميع الخدمات الأخرى
+        try {
+          console.log('🔄 معالجة خدمة عامة...');
+
+          // التأكد من وجود خدمة مختارة
+          if (!selectedService || !selectedService.service_number) {
+            Alert.alert(
+              language === 'ar' ? 'خطأ' : language === 'he' ? 'שגיאה' : 'Error',
+              language === 'ar' ? 'الرجاء اختيار خدمة أولاً' :
+              language === 'he' ? 'אנא בחר שירות תחילה' :
+              'Please select a service first'
+            );
+            return;
+          }
+
+          // إنشاء أو تحديث بيانات الزبون في قاعدة البيانات
+          const existingCustomer = await customerService.getByNationalId(customerInfo.national_id);
+
+          if (existingCustomer) {
+            // تحديث بيانات الزبون الموجود
+            await customerService.update(existingCustomer.id, {
+              customer_name: customerInfo.customer_name,
+              phone_number: customerInfo.phone_number
+            });
+            console.log('✅ تم تحديث بيانات الزبون في قاعدة البيانات');
+          } else {
+            // إنشاء زبون جديد
+            await customerService.create({
+              customer_name: customerInfo.customer_name,
+              national_id: customerInfo.national_id,
+              phone_number: customerInfo.phone_number
+            });
+            console.log('✅ تم إنشاء زبون جديد في قاعدة البيانات');
+          }
+
+          // إنشاء معاملة في جدول transactions
+          const transactionData = {
+            service_number: selectedService.service_number,
+            amount_paid: 0,
+            currency_paid: 'ILS',
+            amount_received: 0,
+            currency_received: 'ILS',
+            customer_id: customerInfo.national_id,
+            notes: `${selectedService.service_name} - الزبون: ${customerInfo.customer_name}`
+          };
+
+          console.log('═══════════════════════════════════════');
+          console.log('📝 إنشاء معاملة جديدة:');
+          console.log('  - رقم الخدمة:', selectedService.service_number);
+          console.log('  - اسم الخدمة:', selectedService.service_name);
+          console.log('  - رقم هوية الزبون:', customerInfo.national_id);
+          console.log('  - اسم الزبون:', customerInfo.customer_name);
+          console.log('═══════════════════════════════════════');
+
+          // إضافة المعاملة إلى قاعدة البيانات
+          await transactionService.create(transactionData);
+
+          console.log('✅ تم حفظ المعاملة في جدول transactions بنجاح');
+
+          // الانتقال إلى صفحة الخدمة
+          await navigateToServiceScreen();
+
+        } catch (serviceError) {
+          console.error('❌ خطأ في معالجة الخدمة:', serviceError);
+          Alert.alert(
+            language === 'ar' ? 'خطأ' : language === 'he' ? 'שגיאה' : 'Error',
+            language === 'ar' ? 'حدث خطأ في حفظ البيانات' :
+            language === 'he' ? 'אירעה שגיאה בשמירת הנתונים' :
+            'Error occurred saving data'
+          );
+        }
       }
 
     } catch (error) {
