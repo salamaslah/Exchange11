@@ -677,18 +677,25 @@ export const customerService = {
           birth_date: customer.birth_date
         });
         
+        // إعداد البيانات للإرسال (فقط الحقول الموجودة)
+        const insertData: any = {
+          customer_name: customer.customer_name,
+          national_id: customer.national_id,
+          phone_number: customer.phone_number
+        };
+
+        // إضافة الحقول الاختيارية إذا كانت موجودة
+        if (customer.birth_date) insertData.birth_date = customer.birth_date;
+        if (customer.image1_data) insertData.image1_data = customer.image1_data;
+        if (customer.image1_type) insertData.image1_type = customer.image1_type;
+        if (customer.image2_data) insertData.image2_data = customer.image2_data;
+        if (customer.image2_type) insertData.image2_type = customer.image2_type;
+
+        console.log('📊 البيانات النهائية المرسلة:', insertData);
+
         const { data, error } = await supabase!
           .from('customers')
-          .insert({
-            customer_name: customer.customer_name,
-            national_id: customer.national_id,
-            phone_number: customer.phone_number,
-            birth_date: customer.birth_date,
-            image1_data: customer.image1_data,
-            image1_type: customer.image1_type,
-            image2_data: customer.image2_data,
-            image2_type: customer.image2_type
-          })
+          .insert(insertData)
           .select()
           .single();
         
@@ -734,17 +741,21 @@ export const customerService = {
       
       if (isSupabaseConfigured()) {
         console.log('📊 تحديث الزبون في جدول customers في قاعدة البيانات');
-        
+
+        // إعداد البيانات للتحديث (فقط الحقول الموجودة)
+        const updateData: any = {};
+        if (customer.customer_name) updateData.customer_name = customer.customer_name;
+        if (customer.phone_number) updateData.phone_number = customer.phone_number;
+        if (customer.birth_date) updateData.birth_date = customer.birth_date;
+        if (customer.image1_data) updateData.image1_data = customer.image1_data;
+        if (customer.image1_type) updateData.image1_type = customer.image1_type;
+        if (customer.image2_data) updateData.image2_data = customer.image2_data;
+        if (customer.image2_type) updateData.image2_type = customer.image2_type;
+
+        console.log('📊 البيانات المحدثة:', updateData);
+
         // البحث بـ national_id بدلاً من id إذا كان id هو رقم الهوية
-        let query = supabase!.from('customers').update({
-          customer_name: customer.customer_name,
-          phone_number: customer.phone_number,
-          birth_date: customer.birth_date,
-          image1_data: customer.image1_data,
-          image1_type: customer.image1_type,
-          image2_data: customer.image2_data,
-          image2_type: customer.image2_type
-        });
+        let query = supabase!.from('customers').update(updateData);
         
         // إذا كان id يبدو كرقم هوية (9 أرقام)، ابحث بـ national_id
         if (id.length === 9 && /^\d+$/.test(id)) {
