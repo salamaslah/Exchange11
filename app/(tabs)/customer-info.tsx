@@ -485,28 +485,31 @@ export default function CustomerInfoScreen() {
 
       // معالجة المعاملة حسب نوع الخدمة
       if (fromCalculator && calculatorData) {
-        // إنشاء أو تحديث بيانات الزبون في قاعدة البيانات
+        // إنشاء أو تحديث بيانات الزبون في قاعدة البيانات (صرافة الأموال)
         try {
+          console.log('🔍 البحث عن زبون برقم هوية:', customerInfo.national_id);
           const existingCustomer = await customerService.getByNationalId(customerInfo.national_id);
 
           if (existingCustomer) {
-            // تحديث بيانات الزبون الموجود
+            // الزبون موجود - تحديث بياناته
+            console.log('👤 زبون موجود - تحديث البيانات...');
             await customerService.update(existingCustomer.id, {
               customer_name: customerInfo.customer_name,
               phone_number: customerInfo.phone_number
             });
-            console.log('✅ تم تحديث بيانات الزبون في قاعدة البيانات');
+            console.log('✅ تم تحديث بيانات الزبون في جدول customers');
           } else {
-            // إنشاء زبون جديد
+            // زبون جديد - إنشاء سجل جديد
+            console.log('✨ زبون جديد - إنشاء سجل في جدول customers...');
             await customerService.create({
               customer_name: customerInfo.customer_name,
               national_id: customerInfo.national_id,
               phone_number: customerInfo.phone_number
             });
-            console.log('✅ تم إنشاء زبون جديد في قاعدة البيانات');
+            console.log('✅ تم إنشاء زبون جديد في جدول customers بنجاح!');
           }
         } catch (customerError) {
-          console.error('❌ خطأ في حفظ بيانات الزبون في قاعدة البيانات:', customerError);
+          console.error('❌ خطأ في حفظ بيانات الزبون:', customerError);
           // المتابعة حتى لو فشل حفظ الزبون
         }
 
@@ -542,26 +545,29 @@ export default function CustomerInfoScreen() {
       } else if (selectedService && selectedService.service_number === 1) {
         // معالجة خدمة إنشاء الفيزا - إتمام العملية مباشرة
         try {
+          console.log('🔍 البحث عن زبون برقم هوية:', customerInfo.national_id);
           const existingCustomer = await customerService.getByNationalId(customerInfo.national_id);
-          
+
           if (existingCustomer) {
-            // تحديث بيانات الزبون الموجود
+            // الزبون موجود - تحديث بياناته
+            console.log('👤 زبون موجود - تحديث البيانات...');
             await customerService.update(existingCustomer.id, {
               customer_name: customerInfo.customer_name,
               phone_number: customerInfo.phone_number
             });
-            console.log('✅ تم تحديث بيانات الزبون في قاعدة البيانات');
+            console.log('✅ تم تحديث بيانات الزبون في جدول customers');
           } else {
-            // إنشاء زبون جديد
+            // زبون جديد - إنشاء سجل جديد
+            console.log('✨ زبون جديد - إنشاء سجل في جدول customers...');
             await customerService.create({
               customer_name: customerInfo.customer_name,
               national_id: customerInfo.national_id,
               phone_number: customerInfo.phone_number
             });
-            console.log('✅ تم إنشاء زبون جديد في قاعدة البيانات');
+            console.log('✅ تم إنشاء زبون جديد في جدول customers بنجاح!');
           }
         } catch (customerError) {
-          console.error('❌ خطأ في حفظ بيانات الزبون في قاعدة البيانات:', customerError);
+          console.error('❌ خطأ في حفظ بيانات الزبون:', customerError);
           Alert.alert(
             language === 'ar' ? 'تحذير' : language === 'he' ? 'אזהרה' : 'Warning',
             language === 'ar' ? 'حدث خطأ في حفظ بيانات الزبون، لكن سيتم المتابعة' :
@@ -630,23 +636,33 @@ export default function CustomerInfoScreen() {
           }
 
           // إنشاء أو تحديث بيانات الزبون في قاعدة البيانات
+          console.log('🔍 البحث عن زبون برقم هوية:', customerInfo.national_id);
           const existingCustomer = await customerService.getByNationalId(customerInfo.national_id);
 
           if (existingCustomer) {
-            // تحديث بيانات الزبون الموجود
+            // الزبون موجود - تحديث بياناته
+            console.log('👤 زبون موجود - تحديث البيانات...');
             await customerService.update(existingCustomer.id, {
               customer_name: customerInfo.customer_name,
               phone_number: customerInfo.phone_number
             });
-            console.log('✅ تم تحديث بيانات الزبون في قاعدة البيانات');
+            console.log('✅ تم تحديث بيانات الزبون في جدول customers');
+            console.log('   - الاسم:', customerInfo.customer_name);
+            console.log('   - رقم الهوية:', customerInfo.national_id);
+            console.log('   - رقم الهاتف:', customerInfo.phone_number);
           } else {
-            // إنشاء زبون جديد
-            await customerService.create({
+            // زبون جديد - إنشاء سجل جديد
+            console.log('✨ زبون جديد - إنشاء سجل في جدول customers...');
+            const newCustomer = await customerService.create({
               customer_name: customerInfo.customer_name,
               national_id: customerInfo.national_id,
               phone_number: customerInfo.phone_number
             });
-            console.log('✅ تم إنشاء زبون جديد في قاعدة البيانات');
+            console.log('✅ تم إنشاء زبون جديد في جدول customers بنجاح!');
+            console.log('   - ID:', newCustomer?.id);
+            console.log('   - الاسم:', customerInfo.customer_name);
+            console.log('   - رقم الهوية:', customerInfo.national_id);
+            console.log('   - رقم الهاتف:', customerInfo.phone_number);
           }
 
           // إنشاء معاملة في جدول transactions
