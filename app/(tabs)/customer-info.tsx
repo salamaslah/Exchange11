@@ -375,100 +375,6 @@ export default function CustomerInfoScreen() {
     }
   };
 
-  const showCalculatorTransactionMessage = () => {
-    const fromCurrencyName = calculatorData.fromCurrency === 'ILS' ? 
-      (language === 'ar' ? 'شيقل' : language === 'he' ? 'שקל' : 'Shekel') :
-      calculatorData.fromCurrency;
-    
-    const toCurrencyName = calculatorData.toCurrency === 'ILS' ? 
-      (language === 'ar' ? 'شيقل' : language === 'he' ? 'שקל' : 'Shekel') :
-      calculatorData.toCurrency;
-
-    Alert.alert(
-      language === 'ar' ? '✅ تم تسجيل المعاملة بنجاح' : 
-      language === 'he' ? '✅ העסקה נרשמה בהצלחה' : 
-      '✅ Transaction Recorded Successfully',
-      
-      language === 'ar' ? 
-        `🙏 شكراً لاختيارك محلنا\n\n` +
-        `📋 يرجى التقدم إلى الشباك وانتظار دورك\n\n` +
-        `تفاصيل المعاملة:\n` +
-        `الزبون: ${customerInfo.customer_name}\n` +
-        `من: ${calculatorData.fromAmount} ${fromCurrencyName}\n` +
-        `إلى: ${calculatorData.toAmount} ${toCurrencyName}\n\n` +
-        `✅ تم تسجيل المعاملة في النظام بنجاح` :
-      
-      language === 'he' ? 
-        `🙏 תודה שבחרת בחנות שלנו\n\n` +
-        `📋 אנא פנה לדלפק והמתן לתורך\n\n` +
-        `פרטי העסקה:\n` +
-        `לקוח: ${customerInfo.customer_name}\n` +
-        `מ: ${calculatorData.fromAmount} ${fromCurrencyName}\n` +
-        `ל: ${calculatorData.toAmount} ${toCurrencyName}\n\n` +
-        `✅ העסקה נרשמה במערכת בהצלחה` :
-      
-        `🙏 Thank you for choosing our store\n\n` +
-        `📋 Please proceed to the counter and wait for your turn\n\n` +
-        `Transaction Details:\n` +
-        `Customer: ${customerInfo.customer_name}\n` +
-        `From: ${calculatorData.fromAmount} ${fromCurrencyName}\n` +
-        `To: ${calculatorData.toAmount} ${toCurrencyName}\n\n` +
-        `✅ Transaction recorded in system successfully`,
-      
-      [
-        {
-          text: language === 'ar' ? '🏠 العودة لأسعار اليوم' : 
-                language === 'he' ? '🏠 חזרה למחירי היום' : 
-                '🏠 Back to Today\'s Prices',
-          onPress: () => router.replace('/(tabs)/prices')
-        }
-      ]
-    );
-  };
-
-  const showVisaCreationMessage = () => {
-    Alert.alert(
-      language === 'ar' ? '✅ تم تسجيل طلب إنشاء الفيزا بنجاح' : 
-      language === 'he' ? '✅ בקשת יצירת הכרטיס נרשמה בהצלחה' : 
-      '✅ Card Creation Request Recorded Successfully',
-      
-      language === 'ar' ? 
-        `🙏 شكراً لاختيارك محلنا\n\n` +
-        `📋 يرجى التقدم إلى الشباك وانتظار دورك\n\n` +
-        `تفاصيل المعاملة:\n` +
-        `الزبون: ${customerInfo.customer_name}\n` +
-        `الخدمة: إنشاء فيزا\n` +
-        `الرسوم: 45 شيقل\n\n` +
-        `✅ تم تسجيل المعاملة في النظام بنجاح` :
-      
-      language === 'he' ? 
-        `🙏 תודה שבחרת בחנות שלנו\n\n` +
-        `📋 אנא פנה לדלפק והמתן לתורך\n\n` +
-        `פרטי העסקה:\n` +
-        `לקוח: ${customerInfo.customer_name}\n` +
-        `שירות: יצירת כרטיס\n` +
-        `עמלה: 45 שקל\n\n` +
-        `✅ העסקה נרשמה במערכת בהצלחה` :
-      
-        `🙏 Thank you for choosing our store\n\n` +
-        `📋 Please proceed to the counter and wait for your turn\n\n` +
-        `Transaction Details:\n` +
-        `Customer: ${customerInfo.customer_name}\n` +
-        `Service: Create Card\n` +
-        `Fee: 45 Shekel\n\n` +
-        `✅ Transaction recorded in system successfully`,
-      
-      [
-        {
-          text: language === 'ar' ? '🏠 العودة لأسعار اليوم' : 
-                language === 'he' ? '🏠 חזרה למחירי היום' : 
-                '🏠 Back to Today\'s Prices',
-          onPress: () => router.replace('/(tabs)/prices')
-        }
-      ]
-    );
-  };
-
   const handleContinue = async () => {
     if (!validateCustomerInfo()) return;
 
@@ -539,9 +445,9 @@ export default function CustomerInfoScreen() {
         // تنظيف البيانات المؤقتة
         await AsyncStorage.removeItem('fromCalculator');
         await AsyncStorage.removeItem('calculatorData');
-        
-        // عرض رسالة الشكر والتوجيه
-        showCalculatorTransactionMessage();
+
+        // الانتقال إلى صفحة الانتظار
+        router.push('/waiting-screen');
       } else if (selectedService && selectedService.service_number === 1) {
         // معالجة خدمة إنشاء الفيزا - إتمام العملية مباشرة
         try {
@@ -616,9 +522,9 @@ export default function CustomerInfoScreen() {
         await AsyncStorage.removeItem('selectedServiceName');
         await AsyncStorage.removeItem('selectedServiceNameHe');
         await AsyncStorage.removeItem('selectedServiceNameEn');
-        
-        // عرض رسالة الشكر والتوجيه
-        showVisaCreationMessage();
+
+        // الانتقال إلى صفحة الانتظار
+        router.push('/waiting-screen');
       } else {
         // معالجة جميع الخدمات الأخرى
         try {
@@ -689,8 +595,8 @@ export default function CustomerInfoScreen() {
 
           console.log('✅ تم حفظ المعاملة في جدول transactions بنجاح');
 
-          // الانتقال إلى صفحة الخدمة
-          await navigateToServiceScreen();
+          // الانتقال إلى صفحة الانتظار
+          router.push('/waiting-screen');
 
         } catch (serviceError) {
           console.error('❌ خطأ في معالجة الخدمة:', serviceError);
