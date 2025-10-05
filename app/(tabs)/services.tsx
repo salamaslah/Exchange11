@@ -109,13 +109,14 @@ export default function ServicesScreen() {
       
       // في حالة الخطأ، استخدم الخدمات الافتراضية
       const defaultServices = [
-        { id: '1', service_number: 1, service_name: 'صرافة أموال' },
-        { id: '2', service_number: 2, service_name: 'تحويل للخارج' },
-        { id: '3', service_number: 3, service_name: 'سحب حوالة' },
-        { id: '4', service_number: 4, service_name: 'صرافة شيكات' },
-        { id: '5', service_number: 5, service_name: 'تحويل لحساب بنك صاحب المحل' },
-        { id: '6', service_number: 6, service_name: 'سحب من الفيزا' },
-        { id: '7', service_number: 7, service_name: 'إيداع في الفيزا' }
+        { id: '1', service_number: 1, service_name: 'إنشاء فيزا', service_name_he: 'יצירת כרטיס', service_name_en: 'Create Card' },
+        { id: '2', service_number: 2, service_name: 'تحويل للخارج', service_name_he: 'העברה לחו"ל', service_name_en: 'International Transfer' },
+        { id: '3', service_number: 3, service_name: 'سحب حوالة', service_name_he: 'משיכת העברה', service_name_en: 'Receive Transfer' },
+        { id: '4', service_number: 4, service_name: 'صرافة شيكات', service_name_he: 'פדיון צ\'קים', service_name_en: 'Check Cashing' },
+        { id: '5', service_number: 5, service_name: 'تحويل لحساب بنك صاحب المحل', service_name_he: 'העברה לחשבון הבנק', service_name_en: 'Bank Account Transfer' },
+        { id: '6', service_number: 6, service_name: 'سحب من الفيزا', service_name_he: 'משיכה מכרטיס', service_name_en: 'Card Withdrawal' },
+        { id: '7', service_number: 7, service_name: 'إيداع في الفيزا', service_name_he: 'הפקדה בכרטיס', service_name_en: 'Card Deposit' },
+        { id: '8', service_number: 8, service_name: 'صرافة أموال', service_name_he: 'החלפת כספים', service_name_en: 'Money Exchange' }
       ];
       
       console.log('📱 استخدام الخدمات الافتراضية كبديل');
