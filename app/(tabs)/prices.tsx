@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Modal, TextInput, Alert, SafeAreaView, Image, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Modal, TextInput, Alert, SafeAreaView, Image, Dimensions, Linking } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { currencyService, companySettingsService, workingHoursService } from '@/lib/supabase';
@@ -509,6 +509,47 @@ export default function PricesScreen() {
     };
   }, []);
 
+  const sendWhatsAppMessage = async (currencyName: string) => {
+    const phoneNumber = '972526000841';
+
+    const messages = {
+      ar: `مرحباً، أرغب في طلب كمية من عملة ${currencyName}. هل يمكنكم توفيرها؟`,
+      he: `שלום, אני רוצה להזמין כמות של מטבע ${currencyName}. האם אתם יכולים לספק?`,
+      en: `Hello, I would like to order some ${currencyName} currency. Can you provide it?`
+    };
+
+    const message = messages[language as keyof typeof messages] || messages.ar;
+    const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+
+    try {
+      const canOpen = await Linking.canOpenURL(whatsappUrl);
+      if (canOpen) {
+        await Linking.openURL(whatsappUrl);
+      } else {
+        Alert.alert(
+          language === 'ar' ? 'خطأ' :
+          language === 'he' ? 'שגיאה' :
+          'Error',
+
+          language === 'ar' ? 'لا يمكن فتح واتساب. يرجى التأكد من تثبيت التطبيق.' :
+          language === 'he' ? 'לא ניתן לפתוח WhatsApp. אנא ודא שהאפליקציה מותקנת.' :
+          'Cannot open WhatsApp. Please make sure the app is installed.'
+        );
+      }
+    } catch (error) {
+      console.error('خطأ في فتح واتساب:', error);
+      Alert.alert(
+        language === 'ar' ? 'خطأ' :
+        language === 'he' ? 'שגיאה' :
+        'Error',
+
+        language === 'ar' ? 'حدث خطأ في فتح واتساب' :
+        language === 'he' ? 'אירעה שגיאה בפתיחת WhatsApp' :
+        'Error opening WhatsApp'
+      );
+    }
+  };
+
   const navigateToServices = async () => {
     try {
       await AsyncStorage.setItem('selectedLanguage', language);
@@ -716,15 +757,10 @@ export default function PricesScreen() {
                       if (currency.is_active) {
                         openCalculator(currency.code);
                       } else {
-                        Alert.alert(
-                          language === 'ar' ? 'عملة غير متوفرة' :
-                          language === 'he' ? 'מטבע לא זמין' :
-                          'Currency Unavailable',
-                          
-                          language === 'ar' ? `عملة ${currency.name_ar} غير متوفرة حالياً. يرجى التواصل معنا للحجز المسبق.` :
-                          language === 'he' ? `מטבע ${currency.name_he || currency.name_ar} לא זמין כרגע. אנא צור קשר להזמנה מראש.` :
-                          `${currency.name_en} is currently unavailable. Please contact us for advance booking.`
-                        );
+                        const currencyName = language === 'ar' ? currency.name_ar :
+                                           language === 'he' ? (currency.name_he || currency.name_ar) :
+                                           currency.name_en;
+                        sendWhatsAppMessage(currencyName);
                       }
                     }}
                     activeOpacity={0.7}
