@@ -63,13 +63,11 @@ async function updateRates() {
       const buyRate = Math.round((currentRate - buyCommission) * 100) / 100;
       const sellRate = Math.round((currentRate + sellCommission) * 100) / 100;
 
-      // تحديث العملة
+      // تحديث العملة (فقط current_rate)
       const { error: updateError } = await supabase
         .from('currencies')
         .update({
           current_rate: currentRate,
-          buy_rate: buyRate,
-          sell_rate: sellRate,
           updated_at: new Date().toISOString()
         })
         .eq('id', currency.id);
