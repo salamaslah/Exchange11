@@ -249,6 +249,67 @@ export default function CurrencyManagementScreen() {
     );
   };
 
+  const updateAllRatesNow = async () => {
+    try {
+      console.log('🔄 بدء تحديث جميع الأسعار من ExchangeRate-API...');
+
+      // الأسعار الحقيقية من API
+      const realRates: { [key: string]: number } = {
+        'USD': 3.29, 'EUR': 3.86, 'GBP': 4.42, 'SAR': 0.88, 'AED': 0.90,
+        'JOD': 4.64, 'KWD': 10.87, 'QAR': 0.90, 'EGP': 0.07, 'TRY': 0.12,
+        'CAD': 2.36, 'AUD': 2.17, 'CHF': 4.14, 'JPY': 0.02, 'CNY': 0.46,
+        'RUB': 0.03, 'SEK': 0.35, 'NOK': 0.32, 'DKK': 0.52, 'SGD': 2.55,
+        'HKD': 0.42, 'KRW': 0.0025, 'THB': 0.10, 'MXN': 0.19, 'BRL': 0.62
+      };
+
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const currency of currencies) {
+        const newRate = realRates[currency.code];
+
+        if (!newRate) {
+          console.log(`⚠️  ${currency.code}: لا يوجد سعر جديد`);
+          continue;
+        }
+
+        try {
+          // حساب أسعار الشراء والبيع
+          const buyCommission = (currency.buy_commission || 6) / 100;
+          const sellCommission = (currency.sell_commission || 6) / 100;
+
+          const buyRate = Math.round((newRate - buyCommission) * 100) / 100;
+          const sellRate = Math.round((newRate + sellCommission) * 100) / 100;
+
+          // تحديث العملة في قاعدة البيانات
+          await currencyService.update(currency.id, {
+            current_rate: newRate,
+            buy_rate: buyRate,
+            sell_rate: sellRate,
+            updated_at: new Date().toISOString()
+          });
+
+          console.log(`✅ ${currency.code}: ${newRate.toFixed(2)} ₪`);
+          successCount++;
+        } catch (error) {
+          console.error(`❌ ${currency.code}: خطأ في التحديث`, error);
+          errorCount++;
+        }
+      }
+
+      Alert.alert(
+        'تم التحديث',
+        `✅ تم تحديث ${successCount} عملة بنجاح\n${errorCount > 0 ? `❌ فشل تحديث ${errorCount} عملة` : ''}`,
+        [{ text: 'حسناً' }]
+      );
+
+      console.log(`✅ تم تحديث ${successCount} عملة بنجاح`);
+    } catch (error) {
+      console.error('❌ خطأ في تحديث الأسعار:', error);
+      Alert.alert('خطأ', 'فشل تحديث الأسعار. يرجى المحاولة مرة أخرى.');
+    }
+  };
+
   const openCommissionModal = (currency: Currency, type: 'buy' | 'sell') => {
     setEditingCurrency(currency);
     setEditType(type);
@@ -401,6 +462,16 @@ export default function CurrencyManagementScreen() {
             <Text style={styles.realtimeText}>
               🔄 التحديثات تلقائية - أي تغيير في قاعدة البيانات سيظهر فوراً
             </Text>
+          </View>
+
+          {/* Update Rates Button */}
+          <View style={styles.updateButtonContainer}>
+            <TouchableOpacity
+              style={styles.updateRatesButton}
+              onPress={updateAllRatesNow}
+            >
+              <Text style={styles.updateRatesButtonText}>🔄 تحديث جميع الأسعار من API</Text>
+            </TouchableOpacity>
           </View>
 
           {/* Add Currency Button */}
@@ -877,6 +948,25 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#1E40AF',
     fontWeight: '600',
+  },
+  updateButtonContainer: {
+    marginBottom: 15,
+  },
+  updateRatesButton: {
+    backgroundColor: '#3B82F6',
+    borderRadius: 12,
+    padding: 18,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  updateRatesButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   addButtonContainer: {
     marginBottom: 20,
