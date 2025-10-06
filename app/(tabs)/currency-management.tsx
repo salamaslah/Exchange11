@@ -252,6 +252,8 @@ export default function CurrencyManagementScreen() {
   const updateAllRatesNow = async () => {
     try {
       console.log('🔄 بدء تحديث جميع الأسعار من ExchangeRate-API...');
+      console.log('🔗 Supabase URL:', process.env.EXPO_PUBLIC_SUPABASE_URL);
+      console.log('🔑 Supabase Key:', process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ? 'موجود' : 'غير موجود');
 
       // الأسعار الحقيقية من API
       const realRates: { [key: string]: number } = {
@@ -281,15 +283,33 @@ export default function CurrencyManagementScreen() {
           const buyRate = Math.round((newRate - buyCommission) * 100) / 100;
           const sellRate = Math.round((newRate + sellCommission) * 100) / 100;
 
-          // تحديث العملة في قاعدة البيانات
-          await currencyService.update(currency.id, {
+          // تحديث العملة في قاعدة البيانات مباشرة
+          console.log(`📝 تحديث ${currency.code} (ID: ${currency.id}):`, {
             current_rate: newRate,
             buy_rate: buyRate,
-            sell_rate: sellRate,
-            updated_at: new Date().toISOString()
+            sell_rate: sellRate
           });
 
-          console.log(`✅ ${currency.code}: ${newRate.toFixed(2)} ₪`);
+          // استخدام Supabase مباشرة
+          const { data, error } = await supabase
+            .from('currencies')
+            .update({
+              current_rate: newRate,
+              buy_rate: buyRate,
+              sell_rate: sellRate,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', currency.id)
+            .select();
+
+          if (error) {
+            console.error(`❌ خطأ Supabase في ${currency.code}:`, error);
+            throw error;
+          }
+
+          console.log(`✅ ${currency.code}: تم التحديث - السعر: ${newRate.toFixed(2)} ₪`);
+          console.log(`   📊 buy_rate: ${buyRate.toFixed(2)}, sell_rate: ${sellRate.toFixed(2)}`);
+          console.log(`   💾 البيانات المحدثة:`, data);
           successCount++;
         } catch (error) {
           console.error(`❌ ${currency.code}: خطأ في التحديث`, error);
@@ -304,6 +324,9 @@ export default function CurrencyManagementScreen() {
       );
 
       console.log(`✅ تم تحديث ${successCount} عملة بنجاح`);
+
+      // إعادة تحميل العملات لرؤية التغييرات
+      await loadCurrencies();
     } catch (error) {
       console.error('❌ خطأ في تحديث الأسعار:', error);
       Alert.alert('خطأ', 'فشل تحديث الأسعار. يرجى المحاولة مرة أخرى.');
