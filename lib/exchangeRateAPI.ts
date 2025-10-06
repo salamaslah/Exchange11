@@ -12,9 +12,18 @@ export class ExchangeRateAPIService {
     this.loadApiKey();
   }
 
-  // تحميل مفتاح API من التخزين المحلي
+  // تحميل مفتاح API من المتغيرات البيئية أو التخزين المحلي
   private async loadApiKey() {
     try {
+      // محاولة جلب المفتاح من المتغيرات البيئية أولاً
+      const envApiKey = process.env.EXPO_PUBLIC_EXCHANGERATE_API_KEY;
+      if (envApiKey) {
+        this.apiKey = envApiKey;
+        console.log('✅ تم تحميل مفتاح API من المتغيرات البيئية');
+        return;
+      }
+
+      // إذا لم يكن في المتغيرات البيئية، جلبه من التخزين المحلي
       const savedApiKey = await AsyncStorage.getItem('exchangerate_api_key');
       if (savedApiKey) {
         this.apiKey = savedApiKey;
@@ -79,11 +88,13 @@ export class ExchangeRateAPIService {
         
         // تحويل الأسعار (من الشيقل إلى العملات الأخرى إلى العكس)
         const convertedRates: { [key: string]: number } = {};
-        
+
         for (const [currency, rate] of Object.entries(data.conversion_rates)) {
           if (typeof rate === 'number' && rate > 0) {
             // تحويل من "1 شيقل = X عملة أجنبية" إلى "1 عملة أجنبية = X شيقل"
-            convertedRates[currency] = 1 / rate;
+            // وتقريب إلى منزلتين عشريتين
+            const convertedRate = 1 / rate;
+            convertedRates[currency] = Math.round(convertedRate * 100) / 100;
           }
         }
 
@@ -128,20 +139,24 @@ export class ExchangeRateAPIService {
           // حساب أسعار الشراء والبيع بناءً على العمولات
           const buyCommissionShekel = (currency.buy_commission || 6) / 100;
           const sellCommissionShekel = (currency.sell_commission || 6) / 100;
-          
-          const buyRate = apiRate - buyCommissionShekel;
-          const sellRate = apiRate + sellCommissionShekel;
+
+          // تقريب السعر الأساسي لمنزلتين
+          const roundedRate = Math.round(apiRate * 100) / 100;
+
+          // حساب أسعار الشراء والبيع وتقريبها
+          const buyRate = Math.round((roundedRate - buyCommissionShekel) * 100) / 100;
+          const sellRate = Math.round((roundedRate + sellCommissionShekel) * 100) / 100;
 
           // تحديث العملة في قاعدة البيانات
           await currencyService.update(currency.id, {
-            current_rate: apiRate,
+            current_rate: roundedRate,
             buy_rate: buyRate,
             sell_rate: sellRate,
             updated_at: new Date().toISOString()
           });
 
           updatedCount++;
-          console.log(`✅ تم تحديث ${currency.name_ar} (${currency.code}): ${apiRate.toFixed(4)}`);
+          console.log(`✅ تم تحديث ${currency.name_ar} (${currency.code}): ${roundedRate.toFixed(2)}`);
         } else {
           console.log(`⚠️ لم يتم العثور على سعر ${currency.name_ar} (${currency.code}) في API`);
         }

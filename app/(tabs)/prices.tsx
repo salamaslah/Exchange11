@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { currencyService, companySettingsService, workingHoursService } from '@/lib/supabase';
 import { supabase } from '@/lib/supabase';
+import { exchangeRateAPI } from '@/lib/exchangeRateAPI';
 
 interface Currency {
   id: string;
@@ -74,6 +75,8 @@ export default function PricesScreen() {
   const [inputSide, setInputSide] = useState<'left' | 'right'>('left');
   const [inactivityTimer, setInactivityTimer] = useState<NodeJS.Timeout | null>(null);
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
+  const [lastUpdateTime, setLastUpdateTime] = useState<string>('');
+  const [isUpdatingRates, setIsUpdatingRates] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -84,8 +87,12 @@ export default function PricesScreen() {
     const subscription = Dimensions.addEventListener('change', onChange);
     loadData();
     loadLanguage();
+    startAutoRateUpdates();
 
-    return () => subscription?.remove();
+    return () => {
+      subscription?.remove();
+      exchangeRateAPI.stopAutoUpdate();
+    };
   }, []);
 
   // تبديل الإعلانات تلقائياً كل 5 ثوانٍ
@@ -133,6 +140,55 @@ export default function PricesScreen() {
     } catch (error) {
       console.log('خطأ في إشعار تغيير اللغة:', error);
     }
+  };
+
+  const updateExchangeRates = async () => {
+    if (isUpdatingRates) {
+      console.log('⏳ التحديث قيد التنفيذ بالفعل...');
+      return;
+    }
+
+    try {
+      setIsUpdatingRates(true);
+      console.log('🔄 بدء تحديث أسعار الصرف...');
+
+      const result = await exchangeRateAPI.updateCurrencyRatesInDatabase();
+
+      if (result.success) {
+        console.log(`✅ تم تحديث ${result.updatedCount} عملة بنجاح`);
+
+        await loadData();
+
+        const updateInfo = await exchangeRateAPI.getLastUpdateInfo();
+        if (updateInfo.lastUpdate) {
+          setLastUpdateTime(updateInfo.lastUpdate);
+        }
+      } else {
+        console.error('❌ فشل تحديث الأسعار:', result.error);
+      }
+    } catch (error) {
+      console.error('❌ خطأ في تحديث أسعار الصرف:', error);
+    } finally {
+      setIsUpdatingRates(false);
+    }
+  };
+
+  const startAutoRateUpdates = async () => {
+    console.log('🚀 بدء التحديث التلقائي للأسعار...');
+
+    const updateInfo = await exchangeRateAPI.getLastUpdateInfo();
+    if (updateInfo.lastUpdate) {
+      setLastUpdateTime(updateInfo.lastUpdate);
+    }
+
+    await updateExchangeRates();
+
+    const intervalId = setInterval(async () => {
+      console.log('⏰ تحديث تلقائي للأسعار (كل 5 دقائق)...');
+      await updateExchangeRates();
+    }, 5 * 60 * 1000);
+
+    return () => clearInterval(intervalId);
   };
 
   const loadData = async () => {
@@ -651,6 +707,24 @@ export default function PricesScreen() {
           </View>
         </View>
 
+        {/* Last Update Time */}
+        {lastUpdateTime && (
+          <View style={styles.updateTimeContainer}>
+            <Text style={styles.updateTimeText}>
+              {language === 'ar' && `⏰ آخر تحديث: ${lastUpdateTime}`}
+              {language === 'he' && `⏰ עדכון אחרון: ${lastUpdateTime}`}
+              {language === 'en' && `⏰ Last Update: ${lastUpdateTime}`}
+            </Text>
+            {isUpdatingRates && (
+              <Text style={styles.updatingText}>
+                {language === 'ar' && '🔄 جاري التحديث...'}
+                {language === 'he' && '🔄 מעדכן...'}
+                {language === 'en' && '🔄 Updating...'}
+              </Text>
+            )}
+          </View>
+        )}
+
         {/* Advertisement Carousel - Above Table */}
         {currentAd && (
           <View style={styles.advertisementContainer}>
@@ -1129,6 +1203,26 @@ const styles = StyleSheet.create({
     color: '#059669',
     fontWeight: '600',
     textAlign: 'center',
+  },
+  updateTimeContainer: {
+    backgroundColor: '#EFF6FF',
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#DBEAFE',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  updateTimeText: {
+    fontSize: 12,
+    color: '#1E40AF',
+    fontWeight: '600',
+  },
+  updatingText: {
+    fontSize: 12,
+    color: '#059669',
+    fontWeight: '600',
   },
   // Advertisement Carousel Styles
   advertisementContainer: {
