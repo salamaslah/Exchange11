@@ -1,9 +1,22 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
+import Constants from 'expo-constants';
 
 // Initialize Supabase client with fallback values
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://drmfvptsuvrqmsqtpzse.supabase.co';
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRybWZ2cHRzdXZycW1zcXRwenNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgwOTE0MzEsImV4cCI6MjA3MzY2NzQzMX0.nhamOt3pYR3BnS8cSS0pjYZD5xUtLR50h0bkRfnRUj4 '
+// Try to get from process.env first, then from Constants.expoConfig.extra
+const supabaseUrl =
+  process.env.EXPO_PUBLIC_SUPABASE_URL ||
+  Constants.expoConfig?.extra?.EXPO_PUBLIC_SUPABASE_URL ||
+  'https://drmfvptsuvrqmsqtpzse.supabase.co';
+
+const supabaseAnonKey =
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
+  Constants.expoConfig?.extra?.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRybWZ2cHRzdXZycW1zcXRwenNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgwOTE0MzEsImV4cCI6MjA3MzY2NzQzMX0.nhamOt3pYR3BnS8cSS0pjYZD5xUtLR50h0bkRfnRUj4';
+
+console.log('🔗 Supabase Configuration:');
+console.log('   URL:', supabaseUrl);
+console.log('   Key:', supabaseAnonKey ? '✅ موجود' : '❌ غير موجود');
 
 // Create Supabase client
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
