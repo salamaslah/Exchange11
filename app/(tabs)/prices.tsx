@@ -88,12 +88,54 @@ export default function PricesScreen() {
     loadData();
     loadLanguage();
     startAutoRateUpdates();
+    setupRealtimeSubscription();
 
     return () => {
       subscription?.remove();
       exchangeRateAPI.stopAutoUpdate();
     };
   }, []);
+
+  // إعداد الاشتراك في التحديثات الفورية من Supabase
+  const setupRealtimeSubscription = () => {
+    console.log('🔄 إعداد الاشتراك في التحديثات الفورية للعملات...');
+
+    const channel = supabase
+      .channel('currencies-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'currencies'
+        },
+        (payload) => {
+          console.log('🔔 تحديث فوري للعملة:', payload.new);
+          handleCurrencyUpdate(payload.new);
+        }
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ تم الاشتراك في التحديثات الفورية للعملات');
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  };
+
+  // معالجة تحديث العملة الفوري
+  const handleCurrencyUpdate = (updatedCurrency: any) => {
+    setAllCurrencies((prevCurrencies) =>
+      prevCurrencies.map((currency) =>
+        currency.id === updatedCurrency.id
+          ? { ...currency, ...updatedCurrency }
+          : currency
+      )
+    );
+    console.log('💡 تم تحديث العملة في الجدول تلقائياً');
+  };
 
   // تبديل الإعلانات تلقائياً كل 5 ثوانٍ
   useEffect(() => {

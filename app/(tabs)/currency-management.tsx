@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, Alert, Modal, SafeAreaView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { currencyService } from '@/lib/supabase';
+import { currencyService, supabase } from '@/lib/supabase';
 
 interface Currency {
   id: string;
@@ -69,7 +69,89 @@ export default function CurrencyManagementScreen() {
 
   useEffect(() => {
     loadCurrencies();
+    setupRealtimeSubscription();
+
+    return () => {
+      console.log('🔌 تنظيف الاشتراكات عند الخروج');
+    };
   }, []);
+
+  // إعداد الاشتراك في التحديثات الفورية من Supabase
+  const setupRealtimeSubscription = () => {
+    console.log('🔄 إعداد الاشتراك في التحديثات الفورية لجدول العملات...');
+
+    const channel = supabase
+      .channel('currencies-realtime-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // جميع الأحداث: INSERT, UPDATE, DELETE
+          schema: 'public',
+          table: 'currencies'
+        },
+        (payload) => {
+          console.log('🔔 تم الكشف عن تغيير في جدول العملات:', payload.eventType);
+          handleRealtimeChange(payload);
+        }
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ تم الاشتراك بنجاح في التحديثات الفورية');
+        } else {
+          console.log('📡 حالة الاشتراك:', status);
+        }
+      });
+
+    return () => {
+      console.log('🔌 إلغاء الاشتراك في التحديثات الفورية');
+      supabase.removeChannel(channel);
+    };
+  };
+
+  // معالجة التغييرات الفورية
+  const handleRealtimeChange = (payload: any) => {
+    const { eventType, new: newRecord, old: oldRecord } = payload;
+
+    setCurrencies((prevCurrencies) => {
+      switch (eventType) {
+        case 'INSERT':
+          // إضافة عملة جديدة
+          console.log('➕ إضافة عملة جديدة:', newRecord.code);
+          const exists = prevCurrencies.some(c => c.id === newRecord.id);
+          if (exists) return prevCurrencies;
+
+          return [...prevCurrencies, newRecord as Currency].sort((a, b) => {
+            if (a.is_active && !b.is_active) return -1;
+            if (!a.is_active && b.is_active) return 1;
+            return a.code.localeCompare(b.code);
+          });
+
+        case 'UPDATE':
+          // تحديث عملة موجودة
+          console.log('✏️ تحديث عملة:', newRecord.code);
+          return prevCurrencies.map((currency) =>
+            currency.id === newRecord.id ? (newRecord as Currency) : currency
+          ).sort((a, b) => {
+            if (a.is_active && !b.is_active) return -1;
+            if (!a.is_active && b.is_active) return 1;
+            return a.code.localeCompare(b.code);
+          });
+
+        case 'DELETE':
+          // حذف عملة
+          console.log('🗑️ حذف عملة:', oldRecord.code);
+          return prevCurrencies.filter((currency) => currency.id !== oldRecord.id);
+
+        default:
+          return prevCurrencies;
+      }
+    });
+
+    // عرض إشعار للمستخدم
+    if (eventType === 'UPDATE') {
+      console.log('💡 تم تحديث العملة تلقائياً في الواجهة');
+    }
+  };
 
   const loadCurrencies = async () => {
     try {
@@ -313,9 +395,17 @@ export default function CurrencyManagementScreen() {
         </View>
 
         <View style={styles.content}>
+          {/* Real-time Status Indicator */}
+          <View style={styles.realtimeIndicator}>
+            <View style={styles.realtimeDot} />
+            <Text style={styles.realtimeText}>
+              🔄 التحديثات تلقائية - أي تغيير في قاعدة البيانات سيظهر فوراً
+            </Text>
+          </View>
+
           {/* Add Currency Button */}
           <View style={styles.addButtonContainer}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.addNewCurrencyButton}
               onPress={() => setShowAddModal(true)}
             >
@@ -763,6 +853,30 @@ const styles = StyleSheet.create({
   },
   content: {
     marginBottom: 20,
+  },
+  realtimeIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#DBEAFE',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#93C5FD',
+  },
+  realtimeDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#10B981',
+    marginRight: 10,
+  },
+  realtimeText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#1E40AF',
+    fontWeight: '600',
   },
   addButtonContainer: {
     marginBottom: 20,
