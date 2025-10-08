@@ -3,7 +3,7 @@ import { currencyService } from './supabase';
 
 // ExchangeRate-API service
 export class ExchangeRateAPIService {
-  private apiKey: string = '';
+  private apiKey: string = '6375a29a46d85cb492b9e541';
   private baseUrl: string = 'https://v6.exchangerate-api.com/v6';
   private baseCurrency: string = 'ILS'; // الشيقل كعملة أساسية
   private updateInterval: NodeJS.Timeout | null = null;
