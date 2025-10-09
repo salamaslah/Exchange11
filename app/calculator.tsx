@@ -13,12 +13,18 @@ export default function CalculatorScreen() {
   const [calculationDetails, setCalculationDetails] = useState('');
   const [language, setLanguage] = useState<'ar' | 'he' | 'en'>('ar');
   const [loading, setLoading] = useState(true);
+  const [inactivityTimer, setInactivityTimer] = useState<NodeJS.Timeout | null>(null);
   const router = useRouter();
 
   useEffect(() => {
     loadLanguage();
     loadCurrencies();
     loadPreselectedCurrencies();
+    startInactivityTimer();
+
+    return () => {
+      clearInactivityTimer();
+    };
   }, []);
 
   const loadLanguage = async () => {
@@ -61,6 +67,28 @@ export default function CalculatorScreen() {
     } catch (error) {
       console.log('خطأ في تحميل العملات المحفوظة:', error);
     }
+  };
+
+  const startInactivityTimer = () => {
+    clearInactivityTimer();
+
+    const timer = setTimeout(() => {
+      console.log('⏰ إغلاق آلة الحاسبة تلقائياً بعد 15 ثانية من عدم الاستخدام');
+      router.back();
+    }, 15000);
+
+    setInactivityTimer(timer);
+  };
+
+  const clearInactivityTimer = () => {
+    if (inactivityTimer) {
+      clearTimeout(inactivityTimer);
+      setInactivityTimer(null);
+    }
+  };
+
+  const resetInactivityTimer = () => {
+    startInactivityTimer();
   };
 
   const calculateConversion = (amount: string, side: 'left' | 'right') => {
@@ -140,11 +168,13 @@ export default function CalculatorScreen() {
   const handleFromAmountChange = (text: string) => {
     setFromAmount(text);
     calculateConversion(text, 'left');
+    resetInactivityTimer();
   };
 
   const handleToAmountChange = (text: string) => {
     setToAmount(text);
     calculateConversion(text, 'right');
+    resetInactivityTimer();
   };
 
   const cycleCurrency = (currentCurrency: string, isFromCurrency: boolean) => {
@@ -168,6 +198,7 @@ export default function CalculatorScreen() {
         calculateConversion(fromAmount, 'left');
       }
     }
+    resetInactivityTimer();
   };
 
   const swapCurrencies = () => {
@@ -182,6 +213,7 @@ export default function CalculatorScreen() {
     if (toAmount) {
       calculateConversion(toAmount, 'left');
     }
+    resetInactivityTimer();
   };
 
   const handleProceedToTransaction = async () => {
@@ -243,6 +275,9 @@ export default function CalculatorScreen() {
         style={styles.scrollContainer}
         showsVerticalScrollIndicator={true}
         contentContainerStyle={{ paddingBottom: 20 }}
+        onTouchStart={resetInactivityTimer}
+        onScroll={resetInactivityTimer}
+        scrollEventThrottle={400}
       >
         <View style={styles.currencySection}>
           <Text style={styles.sectionLabel}>
@@ -317,6 +352,8 @@ export default function CalculatorScreen() {
                 style={styles.amountInput}
                 value={fromAmount}
                 onChangeText={handleFromAmountChange}
+                onFocus={resetInactivityTimer}
+                onKeyPress={resetInactivityTimer}
                 placeholder="0.00"
                 keyboardType="decimal-pad"
                 placeholderTextColor="#9CA3AF"
@@ -328,6 +365,8 @@ export default function CalculatorScreen() {
                 style={styles.amountInput}
                 value={toAmount}
                 onChangeText={handleToAmountChange}
+                onFocus={resetInactivityTimer}
+                onKeyPress={resetInactivityTimer}
                 placeholder="0.00"
                 keyboardType="decimal-pad"
                 placeholderTextColor="#9CA3AF"

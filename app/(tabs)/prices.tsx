@@ -613,7 +613,7 @@ export default function PricesScreen() {
     };
 
     const message = messages[language as keyof typeof messages] || messages.ar;
-    const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+    const whatsappUrl = `const url = `whatsapp://send?phone=${phoneNumber}&text=${encodeURIComponent(message)}`;`;
 
     try {
       const canOpen = await Linking.canOpenURL(whatsappUrl);
