@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, Alert, SafeAreaView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, SafeAreaView } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { currencyService } from '@/lib/supabase';
 
 export default function CalculatorScreen() {
   const [allCurrencies, setAllCurrencies] = useState<any[]>([]);
-  const [fromCurrency, setFromCurrency] = useState('USD');
-  const [toCurrency, setToCurrency] = useState('ILS');
+  const [fromCurrency, setFromCurrency] = useState('ILS');
+  const [toCurrency, setToCurrency] = useState('USD');
   const [fromAmount, setFromAmount] = useState('');
   const [toAmount, setToAmount] = useState('');
+  const [calculationDetails, setCalculationDetails] = useState('');
   const [language, setLanguage] = useState<'ar' | 'he' | 'en'>('ar');
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -62,77 +63,114 @@ export default function CalculatorScreen() {
     }
   };
 
-  const calculatorCurrencies = [
-    { code: 'ILS', name_ar: 'شيقل إسرائيلي', name_en: 'Israeli Shekel', name_he: 'שקל ישראלי' },
-    ...allCurrencies.filter(c => c.is_active)
-  ];
-
-  const calculateConversion = (amount: string, from: string, to: string, isFromAmount: boolean) => {
-    if (!amount || amount === '' || parseFloat(amount) === 0) {
-      if (isFromAmount) {
-        setToAmount('');
-      } else {
-        setFromAmount('');
-      }
+  const calculateConversion = (amount: string, side: 'left' | 'right') => {
+    if (!amount || isNaN(parseFloat(amount))) {
+      setFromAmount('');
+      setToAmount('');
+      setCalculationDetails('');
       return;
     }
 
-    const amountNum = parseFloat(amount);
-    if (isNaN(amountNum)) {
-      return;
-    }
-
-    if (from === to) {
-      if (isFromAmount) {
-        setToAmount(amount);
-      } else {
-        setFromAmount(amount);
-      }
-      return;
-    }
-
-    const fromCurrencyData = allCurrencies.find(c => c.code === from);
-    const toCurrencyData = allCurrencies.find(c => c.code === to);
-
+    const inputAmount = parseFloat(amount);
     let result = 0;
+    let details = '';
 
-    if (from === 'ILS' && toCurrencyData) {
-      result = amountNum / toCurrencyData.sell_rate;
-    } else if (to === 'ILS' && fromCurrencyData) {
-      result = amountNum * fromCurrencyData.buy_rate;
-    } else if (fromCurrencyData && toCurrencyData) {
-      const amountInILS = amountNum * fromCurrencyData.buy_rate;
-      result = amountInILS / toCurrencyData.sell_rate;
+    const fromCurrencyData = allCurrencies.find(c => c.code === fromCurrency);
+    const toCurrencyData = allCurrencies.find(c => c.code === toCurrency);
+
+    if ((fromCurrency !== 'ILS' && !fromCurrencyData) || (toCurrency !== 'ILS' && !toCurrencyData)) {
+      setCalculationDetails('عملة غير موجودة');
+      return;
     }
 
-    if (isFromAmount) {
+    if (fromCurrency === toCurrency) {
+      result = inputAmount;
+      details = 'نفس العملة';
+    } else {
+      let targetCurrency, sourceCurrency, targetCurrencyData, sourceCurrencyData;
+
+      if (side === 'right') {
+        targetCurrency = toCurrency;
+        sourceCurrency = fromCurrency;
+        targetCurrencyData = toCurrencyData;
+        sourceCurrencyData = fromCurrencyData;
+      } else {
+        targetCurrency = toCurrency;
+        sourceCurrency = fromCurrency;
+        targetCurrencyData = toCurrencyData;
+        sourceCurrencyData = fromCurrencyData;
+      }
+
+      if (side === 'right') {
+        if (targetCurrency === 'ILS') {
+          result = inputAmount / sourceCurrencyData!.buy_rate;
+          details = `${inputAmount.toFixed(2)} شيقل ÷ ${sourceCurrencyData!.buy_rate.toFixed(2)} (سعر الشراء) = ${result.toFixed(2)} ${sourceCurrency}`;
+        } else if (sourceCurrency === 'ILS') {
+          result = inputAmount * targetCurrencyData!.sell_rate;
+          details = `${inputAmount.toFixed(2)} ${targetCurrency} × ${targetCurrencyData!.sell_rate.toFixed(2)} (سعر البيع) = ${result.toFixed(2)} شيقل`;
+        } else {
+          const shekelAmount = inputAmount * targetCurrencyData!.sell_rate;
+          result = shekelAmount / sourceCurrencyData!.buy_rate;
+          details = `${inputAmount.toFixed(2)} ${targetCurrency} × ${targetCurrencyData!.sell_rate.toFixed(2)} = ${shekelAmount.toFixed(2)} شيقل ÷ ${sourceCurrencyData!.buy_rate.toFixed(2)} = ${result.toFixed(2)} ${sourceCurrency}`;
+        }
+      } else {
+        if (targetCurrency === 'ILS') {
+          result = inputAmount * sourceCurrencyData!.buy_rate;
+          details = `${inputAmount.toFixed(2)} ${sourceCurrency} × ${sourceCurrencyData!.buy_rate.toFixed(2)} (سعر الشراء) = ${result.toFixed(2)} شيقل`;
+        } else if (sourceCurrency === 'ILS') {
+          result = inputAmount / targetCurrencyData!.sell_rate;
+          details = `${inputAmount.toFixed(2)} شيقل ÷ ${targetCurrencyData!.sell_rate.toFixed(2)} (سعر البيع) = ${result.toFixed(2)} ${targetCurrency}`;
+        } else {
+          const shekelAmount = inputAmount * sourceCurrencyData!.buy_rate;
+          result = shekelAmount / targetCurrencyData!.sell_rate;
+          details = `${inputAmount.toFixed(2)} ${sourceCurrency} × ${sourceCurrencyData!.buy_rate.toFixed(2)} = ${shekelAmount.toFixed(2)} شيقل ÷ ${targetCurrencyData!.sell_rate.toFixed(2)} = ${result.toFixed(2)} ${targetCurrency}`;
+        }
+      }
+    }
+
+    if (side === 'left') {
       setToAmount(result.toFixed(2));
     } else {
       setFromAmount(result.toFixed(2));
     }
+
+    setCalculationDetails(details);
   };
 
   const handleFromAmountChange = (text: string) => {
     setFromAmount(text);
-    calculateConversion(text, fromCurrency, toCurrency, true);
+    calculateConversion(text, 'left');
   };
 
   const handleToAmountChange = (text: string) => {
     setToAmount(text);
-    calculateConversion(text, toCurrency, fromCurrency, false);
+    calculateConversion(text, 'right');
   };
 
-  const handleFromCurrencyChange = (currency: string) => {
-    setFromCurrency(currency);
-    calculateConversion(fromAmount, currency, toCurrency, true);
+  const cycleCurrency = (currentCurrency: string, isFromCurrency: boolean) => {
+    const allCurrenciesWithILS = [
+      { code: 'ILS', name_ar: 'شيقل إسرائيلي' },
+      ...allCurrencies.filter(c => c.is_active)
+    ];
+
+    const currentIndex = allCurrenciesWithILS.findIndex(c => c.code === currentCurrency);
+    const nextIndex = (currentIndex + 1) % allCurrenciesWithILS.length;
+    const nextCurrency = allCurrenciesWithILS[nextIndex].code;
+
+    if (isFromCurrency) {
+      setFromCurrency(nextCurrency);
+      if (fromAmount) {
+        calculateConversion(fromAmount, 'left');
+      }
+    } else {
+      setToCurrency(nextCurrency);
+      if (fromAmount) {
+        calculateConversion(fromAmount, 'left');
+      }
+    }
   };
 
-  const handleToCurrencyChange = (currency: string) => {
-    setToCurrency(currency);
-    calculateConversion(fromAmount, fromCurrency, currency, true);
-  };
-
-  const handleSwapCurrencies = () => {
+  const swapCurrencies = () => {
     const tempCurrency = fromCurrency;
     const tempAmount = fromAmount;
 
@@ -140,39 +178,37 @@ export default function CalculatorScreen() {
     setToCurrency(tempCurrency);
     setFromAmount(toAmount);
     setToAmount(tempAmount);
+
+    if (toAmount) {
+      calculateConversion(toAmount, 'left');
+    }
   };
 
-  const handleConfirmTransaction = async () => {
-    if (!fromAmount || !toAmount || parseFloat(fromAmount) === 0 || parseFloat(toAmount) === 0) {
-      Alert.alert(
-        language === 'ar' ? 'خطأ' : language === 'he' ? 'שגיאה' : 'Error',
-        language === 'ar' ? 'يرجى إدخال المبالغ' :
-        language === 'he' ? 'אנא הזן סכומים' :
-        'Please enter amounts'
-      );
-      return;
+  const handleProceedToTransaction = async () => {
+    try {
+      console.log('🔄 بدء عملية المتابعة للمعاملة...');
+      console.log('📊 بيانات الآلة الحاسبة:', { fromCurrency, toCurrency, fromAmount, toAmount });
+
+      const calculatorTransactionData = {
+        fromCurrency,
+        toCurrency,
+        fromAmount,
+        toAmount,
+        calculationDetails,
+        timestamp: new Date().toISOString(),
+        isFromCalculator: true
+      };
+
+      await AsyncStorage.setItem('fromCalculator', 'true');
+      await AsyncStorage.setItem('calculatorData', JSON.stringify(calculatorTransactionData));
+      await AsyncStorage.setItem('calculatorTransactionReady', 'true');
+
+      console.log('✅ تم حفظ بيانات الآلة الحاسبة:', calculatorTransactionData);
+
+      router.push('/(tabs)/customer-info');
+    } catch (error) {
+      console.error('❌ خطأ في حفظ بيانات الآلة الحاسبة:', error);
     }
-
-    const fromCurrencyData = calculatorCurrencies.find(c => c.code === fromCurrency);
-    const toCurrencyData = calculatorCurrencies.find(c => c.code === toCurrency);
-
-    const calculatorTransactionData = {
-      fromCurrency,
-      toCurrency,
-      fromAmount,
-      toAmount,
-      exchangeRate: (parseFloat(toAmount) / parseFloat(fromAmount)).toFixed(4),
-      fromCurrencyName: fromCurrencyData ? (language === 'ar' ? fromCurrencyData.name_ar : language === 'he' ? fromCurrencyData.name_he : fromCurrencyData.name_en) : fromCurrency,
-      toCurrencyName: toCurrencyData ? (language === 'ar' ? toCurrencyData.name_ar : language === 'he' ? toCurrencyData.name_he : toCurrencyData.name_en) : toCurrency,
-    };
-
-    await AsyncStorage.setItem('fromCalculator', 'true');
-    await AsyncStorage.setItem('calculatorData', JSON.stringify(calculatorTransactionData));
-    await AsyncStorage.setItem('calculatorTransactionReady', 'true');
-
-    console.log('✅ تم حفظ بيانات الآلة الحاسبة:', calculatorTransactionData);
-
-    router.push('/(tabs)/customer-info');
   };
 
   if (loading) {
@@ -191,111 +227,148 @@ export default function CalculatorScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollContainer}>
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backButtonText}>←</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>
-            {language === 'ar' && 'آلة حاسبة العملات'}
-            {language === 'he' && 'מחשבון מטבעות'}
-            {language === 'en' && 'Currency Calculator'}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Text style={styles.backButtonText}>✕</Text>
+        </TouchableOpacity>
+        <Text style={styles.title}>
+          {language === 'ar' && 'آلة حاسبة العملات'}
+          {language === 'he' && 'מחשבון מטבעות'}
+          {language === 'en' && 'Currency Calculator'}
+        </Text>
+        <View style={styles.placeholder} />
+      </View>
+
+      <ScrollView
+        style={styles.scrollContainer}
+        showsVerticalScrollIndicator={true}
+        contentContainerStyle={{ paddingBottom: 20 }}
+      >
+        <View style={styles.currencySection}>
+          <Text style={styles.sectionLabel}>
+            {language === 'ar' && 'اختيار العملات'}
+            {language === 'he' && 'בחירת מטבעות'}
+            {language === 'en' && 'Select Currencies'}
           </Text>
-          <View style={styles.placeholder} />
+          <View style={styles.currencySelectionRow}>
+            <TouchableOpacity
+              style={styles.currencyButton}
+              onPress={() => cycleCurrency(fromCurrency, true)}
+            >
+              <Text style={styles.currencyButtonCode}>{fromCurrency}</Text>
+              <Text style={styles.currencyButtonName}>
+                {fromCurrency === 'ILS' ? (
+                  language === 'ar' ? 'شيقل إسرائيلي' :
+                  language === 'he' ? 'שקל ישראלי' :
+                  'Israeli Shekel'
+                ) : (
+                  language === 'ar' ? allCurrencies.find(c => c.code === fromCurrency)?.name_ar :
+                  language === 'he' ? allCurrencies.find(c => c.code === fromCurrency)?.name_he :
+                  allCurrencies.find(c => c.code === fromCurrency)?.name_en
+                ) || fromCurrency}
+              </Text>
+              <Text style={styles.tapHint}>
+                {language === 'ar' && 'اضغط للتبديل'}
+                {language === 'he' && 'לחץ להחלפה'}
+                {language === 'en' && 'Tap to switch'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.swapButton}
+              onPress={swapCurrencies}
+            >
+              <Text style={styles.swapButtonText}>⇅</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.currencyButton}
+              onPress={() => cycleCurrency(toCurrency, false)}
+            >
+              <Text style={styles.currencyButtonCode}>{toCurrency}</Text>
+              <Text style={styles.currencyButtonName}>
+                {toCurrency === 'ILS' ? (
+                  language === 'ar' ? 'شيقل إسرائيلي' :
+                  language === 'he' ? 'שקל ישראלי' :
+                  'Israeli Shekel'
+                ) : (
+                  language === 'ar' ? allCurrencies.find(c => c.code === toCurrency)?.name_ar :
+                  language === 'he' ? allCurrencies.find(c => c.code === toCurrency)?.name_he :
+                  allCurrencies.find(c => c.code === toCurrency)?.name_en
+                ) || toCurrency}
+              </Text>
+              <Text style={styles.tapHint}>
+                {language === 'ar' && 'اضغط للتبديل'}
+                {language === 'he' && 'לחץ להחלפה'}
+                {language === 'en' && 'Tap to switch'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
-        <View style={styles.content}>
-          <View style={styles.conversionSection}>
-            <Text style={styles.sectionLabel}>
-              {language === 'ar' && 'من'}
-              {language === 'he' && 'מ'}
-              {language === 'en' && 'From'}
-            </Text>
-
-            <View style={styles.inputContainer}>
+        <View style={styles.currencySection}>
+          <Text style={styles.sectionLabel}>
+            {language === 'ar' && 'المبالغ'}
+            {language === 'he' && 'סכומים'}
+            {language === 'en' && 'Amounts'}
+          </Text>
+          <View style={styles.amountInputRow}>
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              <Text style={styles.currencyLabel}>{fromCurrency}</Text>
               <TextInput
                 style={styles.amountInput}
                 value={fromAmount}
                 onChangeText={handleFromAmountChange}
-                keyboardType="decimal-pad"
                 placeholder="0.00"
+                keyboardType="decimal-pad"
                 placeholderTextColor="#9CA3AF"
               />
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.currencySelector}>
-                {calculatorCurrencies.map(currency => (
-                  <TouchableOpacity
-                    key={currency.code}
-                    style={[
-                      styles.currencyButton,
-                      fromCurrency === currency.code && styles.currencyButtonActive
-                    ]}
-                    onPress={() => handleFromCurrencyChange(currency.code)}
-                  >
-                    <Text style={[
-                      styles.currencyButtonText,
-                      fromCurrency === currency.code && styles.currencyButtonTextActive
-                    ]}>
-                      {currency.code}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
             </View>
-          </View>
-
-          <TouchableOpacity style={styles.swapButton} onPress={handleSwapCurrencies}>
-            <Text style={styles.swapButtonText}>⇅</Text>
-          </TouchableOpacity>
-
-          <View style={styles.conversionSection}>
-            <Text style={styles.sectionLabel}>
-              {language === 'ar' && 'إلى'}
-              {language === 'he' && 'ל'}
-              {language === 'en' && 'To'}
-            </Text>
-
-            <View style={styles.inputContainer}>
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              <Text style={styles.currencyLabel}>{toCurrency}</Text>
               <TextInput
                 style={styles.amountInput}
                 value={toAmount}
                 onChangeText={handleToAmountChange}
-                keyboardType="decimal-pad"
                 placeholder="0.00"
+                keyboardType="decimal-pad"
                 placeholderTextColor="#9CA3AF"
               />
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.currencySelector}>
-                {calculatorCurrencies.map(currency => (
-                  <TouchableOpacity
-                    key={currency.code}
-                    style={[
-                      styles.currencyButton,
-                      toCurrency === currency.code && styles.currencyButtonActive
-                    ]}
-                    onPress={() => handleToCurrencyChange(currency.code)}
-                  >
-                    <Text style={[
-                      styles.currencyButtonText,
-                      toCurrency === currency.code && styles.currencyButtonTextActive
-                    ]}>
-                      {currency.code}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
             </View>
           </View>
+        </View>
 
+        {calculationDetails && (
+          <View style={styles.calculationDetails}>
+            <Text style={styles.calculationText}>{calculationDetails}</Text>
+          </View>
+        )}
+
+        <View style={styles.ratesInfo}>
+          {fromCurrency !== 'ILS' && (
+            <Text style={styles.rateInfoText}>
+              {fromCurrency}: {language === 'ar' ? 'شراء' : language === 'he' ? 'קנייה' : 'Buy'} {allCurrencies.find(c => c.code === fromCurrency)?.buy_rate?.toFixed(2) || 'N/A'} |
+              <Text>{language === 'ar' ? 'بيع' : language === 'he' ? 'מכירה' : 'Sell'} {allCurrencies.find(c => c.code === fromCurrency)?.sell_rate?.toFixed(2) || 'N/A'}</Text>
+            </Text>
+          )}
+          {toCurrency !== 'ILS' && (
+            <Text style={styles.rateInfoText}>
+              {toCurrency}: {language === 'ar' ? 'شراء' : language === 'he' ? 'קנייה' : 'Buy'} {allCurrencies.find(c => c.code === toCurrency)?.buy_rate?.toFixed(2) || 'N/A'} |
+              <Text>{language === 'ar' ? 'بيع' : language === 'he' ? 'מכירה' : 'Sell'} {allCurrencies.find(c => c.code === toCurrency)?.sell_rate?.toFixed(2) || 'N/A'}</Text>
+            </Text>
+          )}
+        </View>
+
+        {fromAmount && toAmount && (
           <TouchableOpacity
-            style={styles.confirmButton}
-            onPress={handleConfirmTransaction}
+            style={styles.proceedButton}
+            onPress={handleProceedToTransaction}
           >
-            <Text style={styles.confirmButtonText}>
-              {language === 'ar' && 'تأكيد المعاملة'}
-              {language === 'he' && 'אשר עסקה'}
-              {language === 'en' && 'Confirm Transaction'}
+            <Text style={styles.proceedButtonText}>
+              {language === 'ar' && 'المتابعة للمعاملة'}
+              {language === 'he' && 'המשך לעסקה'}
+              {language === 'en' && 'Proceed to Transaction'}
             </Text>
           </TouchableOpacity>
-        </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -304,11 +377,7 @@ export default function CalculatorScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F0F9FF',
-  },
-  scrollContainer: {
-    flex: 1,
-    padding: 20,
+    backgroundColor: '#FFFFFF',
   },
   centerContent: {
     flex: 1,
@@ -323,34 +392,36 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 30,
-    marginTop: 20,
+    backgroundColor: '#0369A1',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#0369A1',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   backButtonText: {
     color: '#FFFFFF',
-    fontSize: 24,
+    fontSize: 16,
     fontWeight: 'bold',
   },
   title: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#0369A1',
+    color: '#FFFFFF',
   },
   placeholder: {
-    width: 40,
+    width: 30,
   },
-  content: {
+  scrollContainer: {
     flex: 1,
+    padding: 15,
   },
-  conversionSection: {
+  currencySection: {
     marginBottom: 20,
   },
   sectionLabel: {
@@ -358,57 +429,47 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#374151',
     marginBottom: 10,
-  },
-  inputContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 15,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  amountInput: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    marginBottom: 15,
     textAlign: 'center',
   },
-  currencySelector: {
+  currencySelectionRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 10,
   },
   currencyButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
+    flex: 1,
     backgroundColor: '#F3F4F6',
-    marginRight: 10,
+    padding: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+    minHeight: 100,
+    justifyContent: 'center',
   },
-  currencyButtonActive: {
-    backgroundColor: '#0369A1',
-  },
-  currencyButtonText: {
-    fontSize: 16,
+  currencyButtonCode: {
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#6B7280',
+    color: '#0369A1',
+    marginBottom: 5,
   },
-  currencyButtonTextActive: {
-    color: '#FFFFFF',
+  currencyButtonName: {
+    fontSize: 12,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 5,
+  },
+  tapHint: {
+    fontSize: 10,
+    color: '#9CA3AF',
+    textAlign: 'center',
   },
   swapButton: {
-    alignSelf: 'center',
     width: 50,
     height: 50,
     borderRadius: 25,
     backgroundColor: '#0369A1',
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 15,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -419,16 +480,62 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   swapButtonText: {
-    fontSize: 28,
+    fontSize: 24,
     color: '#FFFFFF',
     fontWeight: 'bold',
   },
-  confirmButton: {
+  amountInputRow: {
+    flexDirection: 'row',
+    gap: 15,
+  },
+  currencyLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#6B7280',
+    marginBottom: 5,
+  },
+  amountInput: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    width: '100%',
+    color: '#1F2937',
+  },
+  calculationDetails: {
+    backgroundColor: '#EFF6FF',
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 15,
+  },
+  calculationText: {
+    fontSize: 12,
+    color: '#1E40AF',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  ratesInfo: {
+    backgroundColor: '#F9FAFB',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 15,
+  },
+  rateInfoText: {
+    fontSize: 12,
+    color: '#4B5563',
+    marginBottom: 5,
+    textAlign: 'center',
+  },
+  proceedButton: {
     backgroundColor: '#059669',
-    padding: 20,
+    padding: 18,
     borderRadius: 12,
     alignItems: 'center',
-    marginTop: 30,
+    marginTop: 10,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -438,9 +545,9 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
-  confirmButtonText: {
+  proceedButtonText: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
   },
 });
