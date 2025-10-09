@@ -523,12 +523,16 @@ export default function PricesScreen() {
     resetInactivityTimer();
   };
 
-  const openCalculator = async (currencyCode?: string) => {
+  const openCalculator = (currencyCode?: string) => {
+    setShowCalculator(true);
     if (currencyCode && currencyCode !== 'ILS') {
-      await AsyncStorage.setItem('calculatorFromCurrency', 'ILS');
-      await AsyncStorage.setItem('calculatorToCurrency', currencyCode);
+      setFromCurrency('ILS');
+      setToCurrency(currencyCode);
     }
-    router.push('/calculator');
+    setFromAmount('');
+    setToAmount('');
+    setCalculationDetails('');
+    startInactivityTimer();
   };
 
   const closeCalculator = () => {
